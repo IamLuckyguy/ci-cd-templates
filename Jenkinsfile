@@ -40,44 +40,46 @@ pipeline {
 
         stage('Prepare Templates') {
             steps {
-                script {
-                    // 템플릿 저장소 클론
-                    dir('ci-cd-templates') {
-                        git url: env.TEMPLATE_REPO, branch: env.TEMPLATE_BRANCH
+                container('jnlp') {
+                    script {
+                        // 템플릿 저장소 클론
+                        dir('ci-cd-templates') {
+                            git url: env.TEMPLATE_REPO, branch: env.TEMPLATE_BRANCH
+                        }
+
+                        // Dockerfile 복사
+                        sh "cp ci-cd-templates/Dockerfile-${env.APP_TYPE} Dockerfile"
+
+                        sh "mkdir -p k8s"
+
+                        // K8s 템플릿 처리
+                        def templates = ['deployment', 'service', 'ingress']
+                        templates.each { template ->
+                            def content = readFile "ci-cd-templates/k8s/${template}-template.yaml"
+                            content = content.replaceAll('\\$\\{APP_NAME\\}', env.APP_NAME)
+                                .replaceAll('\\$\\{PROJECT_NAME\\}', env.PROJECT_NAME)
+                                .replaceAll('\\$\\{ENV\\}', env.ENV)
+                                .replaceAll('\\$\\{COMPONENT\\}', env.COMPONENT)
+                                .replaceAll('\\$\\{REPLICAS\\}', env.REPLICAS)
+                                .replaceAll('\\$\\{CONTAINER_PORT\\}', env.CONTAINER_PORT)
+                                .replaceAll('\\$\\{SERVICE_PORT\\}', env.SERVICE_PORT)
+                                .replaceAll('\\$\\{DOMAIN\\}', env.DOMAIN)
+                                .replaceAll('\\$\\{DOCKER_IMAGE\\}', env.DOCKER_IMAGE)
+                                .replaceAll('\\$\\{DOCKER_TAG\\}', env.DOCKER_TAG)
+                            writeFile file: "k8s/${template}.yaml", text: content
+                            sh "pwd" // 디버깅 목적으로 파일 내용을 출력합니다.
+                            sh "cat k8s/${template}.yaml" // 디버깅 목적으로 파일 내용을 출력합니다.
+                        }
+
+                        sh "echo \"Current container(Prepare Templates): \$HOSTNAME\""
+
+                        // 파일 생성 확인
+                        sh "ls -l k8s/"
+                        sh "cat k8s/deployment.yaml"
+                        sh "cat k8s/service.yaml"
+                        sh "cat k8s/ingress.yaml"
+
                     }
-
-                    // Dockerfile 복사
-                    sh "cp ci-cd-templates/Dockerfile-${env.APP_TYPE} Dockerfile"
-
-                    sh "mkdir -p k8s"
-
-                    // K8s 템플릿 처리
-                    def templates = ['deployment', 'service', 'ingress']
-                    templates.each { template ->
-                        def content = readFile "ci-cd-templates/k8s/${template}-template.yaml"
-                        content = content.replaceAll('\\$\\{APP_NAME\\}', env.APP_NAME)
-                            .replaceAll('\\$\\{PROJECT_NAME\\}', env.PROJECT_NAME)
-                            .replaceAll('\\$\\{ENV\\}', env.ENV)
-                            .replaceAll('\\$\\{COMPONENT\\}', env.COMPONENT)
-                            .replaceAll('\\$\\{REPLICAS\\}', env.REPLICAS)
-                            .replaceAll('\\$\\{CONTAINER_PORT\\}', env.CONTAINER_PORT)
-                            .replaceAll('\\$\\{SERVICE_PORT\\}', env.SERVICE_PORT)
-                            .replaceAll('\\$\\{DOMAIN\\}', env.DOMAIN)
-                            .replaceAll('\\$\\{DOCKER_IMAGE\\}', env.DOCKER_IMAGE)
-                            .replaceAll('\\$\\{DOCKER_TAG\\}', env.DOCKER_TAG)
-                        writeFile file: "k8s/${template}.yaml", text: content
-                        sh "pwd" // 디버깅 목적으로 파일 내용을 출력합니다.
-                        sh "cat k8s/${template}.yaml" // 디버깅 목적으로 파일 내용을 출력합니다.
-                    }
-
-                    sh "echo \"Current container(Prepare Templates): \$HOSTNAME\""
-
-                    // 파일 생성 확인
-                    sh "ls -l k8s/"
-                    sh "cat k8s/deployment.yaml"
-                    sh "cat k8s/service.yaml"
-                    sh "cat k8s/ingress.yaml"
-
                 }
             }
         }

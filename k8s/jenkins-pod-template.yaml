@@ -14,6 +14,9 @@ spec:
         limits:
           memory: "2048Mi"
           cpu: "2000m"
+      volumeMounts:
+        - name: shared-workspace
+          mountPath: /home/jenkins/agent
     - name: kaniko
       image: gcr.io/kaniko-project/executor:debug
       imagePullPolicy: Always
@@ -30,6 +33,8 @@ spec:
       volumeMounts:
         - name: docker-config
           mountPath: /kaniko/.docker
+        - name: shared-workspace
+          mountPath: /home/jenkins/agent
     - name: kubectl
       image: bitnami/kubectl:1.30.4
       command:
@@ -38,6 +43,9 @@ spec:
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
+      volumeMounts:
+        - name: shared-workspace
+          mountPath: /home/jenkins/agent
   volumes:
     - name: docker-config
       secret:
@@ -45,3 +53,5 @@ spec:
         items:
           - key: .dockerconfigjson
             path: config.json
+    - name: shared-workspace
+      emptyDir: {}
