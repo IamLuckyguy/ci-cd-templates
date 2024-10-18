@@ -140,22 +140,24 @@ pipeline {
             steps {
                 container('kaniko') {
                     withEnv(['DOCKER_CONFIG=/kaniko/.docker']) {
-                        def buildArgs = ""
+                        script {
+                            def buildArgs = ""
 
-                        if (env.APP_TYPE == 'nodejs') {
-                            buildArgs = "--build-arg NODE_ENV=${env.ENV}"
-                        } else if (env.APP_TYPE == 'spring') {
-                            buildArgs = "--build-arg SPRING_PROFILES_ACTIVE=${env.ENV}"
+                            if (env.APP_TYPE == 'nodejs') {
+                                buildArgs = "--build-arg NODE_ENV=${env.ENV}"
+                            } else if (env.APP_TYPE == 'spring') {
+                                buildArgs = "--build-arg SPRING_PROFILES_ACTIVE=${env.ENV}"
+                            }
+
+                            sh """
+                                /kaniko/executor \
+                                --context `pwd` \
+                                --destination ${env.DOCKER_IMAGE}:${env.DOCKER_TAG} \
+                                --destination ${env.DOCKER_IMAGE}:latest \
+                                --dockerfile `pwd`/Dockerfile-${env.APP_TYPE} \
+                                ${buildArgs}
+                            """
                         }
-
-                        sh """
-                            /kaniko/executor \\
-                            --context `pwd` \\
-                            --destination ${env.DOCKER_IMAGE}:${env.DOCKER_TAG} \\
-                            --destination ${env.DOCKER_IMAGE}:latest \\
-                            --dockerfile `pwd`/Dockerfile-${env.APP_TYPE} \\
-                            ${buildArgs}
-                        """
                     }
                 }
             }
