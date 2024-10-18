@@ -1,5 +1,9 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            yaml "${env.K8S_CONFIG}"
+        }
+    }
 
     environment {
         // Jenkins 로 부터 전달 받은 파라미터, 환경 변수를 사용하기 위한 선언
@@ -40,7 +44,7 @@ pipeline {
 
         stage('Prepare Templates') {
             steps {
-                container('jnlp') {
+                container('kubectl') {
                     script {
                         // 템플릿 저장소 클론
                         dir('ci-cd-templates') {
