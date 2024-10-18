@@ -1,10 +1,4 @@
 pipeline {
-    agent {
-        kubernetes {
-            yaml "${env.K8S_CONFIG}"
-        }
-    }
-
     environment {
         // Jenkins 로 부터 전달 받은 파라미터, 환경 변수를 사용하기 위한 선언
         APP_TYPE = "${params.APP_TYPE}" // nodejs, spring, ...
@@ -27,6 +21,12 @@ pipeline {
         K8S_CONFIG = readFile 'k8s/jenkins-pod-template.yaml' // Jenkins 에서 사용할 k8s pod 설정 파일
         TEMPLATE_REPO = "https://github.com/IamLuckyguy/ci-cd-templates.git"
         TEMPLATE_BRANCH = "${params.TEMPLATE_BRANCH}" // CI/CD 템플릿 저장소 브랜치
+    }
+
+    agent {
+        kubernetes {
+            yaml "${env.K8S_CONFIG}"
+        }
     }
 
     stages {
@@ -82,21 +82,17 @@ pipeline {
                         sh "cat k8s/deployment.yaml"
                         sh "cat k8s/service.yaml"
                         sh "cat k8s/ingress.yaml"
-
                     }
+
+                    stash includes: 'k8s/**,Dockerfile', name: 'build-files'
                 }
             }
         }
 
         stage('Setup Kubernetes Resources') {
-            agent {
-                kubernetes {
-                    yaml "${env.K8S_CONFIG}"
-                    podRetention never()
-                }
-            }
             steps {
                 container('kubectl') {
+                    unstash 'build-files'
                     script {
                         sh "pwd"
                         sh "ls -al"
