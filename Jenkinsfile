@@ -179,7 +179,7 @@ pipeline {
                 stage('Build and Push with Kaniko') {
                     when {
                         expression { // IMAGE_TAG 가 빈 값일 때만 빌드를 수행
-                            return env.IMAGE_TAG == null || env.IMAGE_TAG.isEmpty()
+                            return env.IMAGE_TAG == null || env.IMAGE_TAG.isEmpty() || env.IMAGE_TAG == ''
                         }
                     }
                     steps {
