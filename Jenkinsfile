@@ -66,7 +66,15 @@ pipeline {
                             .replaceAll('\\$\\{DOCKER_IMAGE\\}', env.DOCKER_IMAGE)
                             .replaceAll('\\$\\{DOCKER_TAG\\}', env.DOCKER_TAG)
                         writeFile file: "k8s/${template}.yaml", text: content
+                        sh "cat k8s/${template}.yaml" // 디버깅 목적으로 파일 내용을 출력합니다.
                     }
+
+                    // 파일 생성 확인
+                    sh "ls -l k8s/"
+                    sh "cat k8s/deployment.yaml"
+                    sh "cat k8s/service.yaml"
+                    sh "cat k8s/ingress.yaml"
+
                 }
             }
         }
