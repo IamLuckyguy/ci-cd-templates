@@ -49,7 +49,7 @@ pipeline {
                     // Dockerfile 복사
                     sh "cp ci-cd-templates/Dockerfile-${env.APP_TYPE} Dockerfile"
 
-                    sh "pwd"
+                    sh "mkdir -p k8s"
 
                     // K8s 템플릿 처리
                     def templates = ['deployment', 'service', 'ingress']
