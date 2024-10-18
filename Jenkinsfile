@@ -1,4 +1,6 @@
 pipeline {
+    agent any
+
     environment {
         // Jenkins 로 부터 전달 받은 파라미터, 환경 변수를 사용하기 위한 선언
         APP_TYPE = "${params.APP_TYPE}" // nodejs, spring, ...
@@ -23,13 +25,13 @@ pipeline {
         TEMPLATE_BRANCH = "${params.TEMPLATE_BRANCH}" // CI/CD 템플릿 저장소 브랜치
     }
 
-    agent {
-        kubernetes {
-            yaml "${env.K8S_CONFIG}"
-        }
-    }
-
     stages {
+        agent {
+            kubernetes {
+                yaml "${env.K8S_CONFIG}"
+            }
+        }
+
         stage('Checkout Application') {
             steps {
                 script {
