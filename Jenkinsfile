@@ -49,6 +49,8 @@ pipeline {
                     // Dockerfile 복사
                     sh "cp ci-cd-templates/Dockerfile-${env.APP_TYPE} Dockerfile"
 
+                    sh "pwd"
+
                     // K8s 템플릿 처리
                     def templates = ['deployment', 'service', 'ingress']
                     templates.each { template ->
@@ -79,6 +81,12 @@ pipeline {
             steps {
                 container('kubectl') {
                     script {
+                        sh "pwd"
+                        sh "ls -al"
+                        sh "cat k8s/deployment.yaml"
+                        sh "cat k8s/service.yaml"
+                        sh "cat k8s/ingress.yaml"
+
                         def namespaceExists = sh(
                             script: "kubectl get namespace ${env.K8S_NAMESPACE}",
                             returnStatus: true
