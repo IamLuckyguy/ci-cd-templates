@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${APP_NAME}
+  namespace: ${PROJECT_NAME}-${ENV}
+  labels:
+    app.kubernetes.io/name: ${APP_NAME}
+    app.kubernetes.io/instance: ${APP_NAME}-${ENV}
+    app.kubernetes.io/version: v1.0.0
+    app.kubernetes.io/component: ${COMPONENT}
+    app.kubernetes.io/part-of: ${PROJECT_NAME}
+    app.kubernetes.io/managed-by: kubectl
+    env: ${ENV}
+spec:
+  selector:
+    app.kubernetes.io/name: ${APP_NAME}
+    app.kubernetes.io/instance: ${APP_NAME}-${ENV}
+    app.kubernetes.io/component: ${COMPONENT}
+    app.kubernetes.io/part-of: ${PROJECT_NAME}
+    env: ${ENV}
+  ports:
+    - protocol: TCP
+      port: ${SERVICE_PORT}
+      targetPort: ${CONTAINER_PORT}
+  type: ClusterIP
