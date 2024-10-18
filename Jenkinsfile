@@ -18,7 +18,7 @@ pipeline {
         DOCKER_USERNAME = "wondookong"
         K8S_NAMESPACE = "${params.PROJECT_NAME}-${params.ENV}" // 네임스페이스가 없을 경우 생성하도록
         DOCKER_IMAGE = "${DOCKER_USERNAME}/${K8S_NAMESPACE}-${params.APP_NAME}" // docker hub image 경로
-        K8S_CONFIG = readFile 'ci-cd-templates/k8s/jenkins-pod-template.yaml' // Jenkins 에서 사용할 k8s pod 설정 파일
+        K8S_CONFIG = readFile 'k8s/jenkins-pod-template.yaml' // Jenkins 에서 사용할 k8s pod 설정 파일
         TEMPLATE_REPO = "https://github.com/IamLuckyguy/ci-cd-templates.git"
         TEMPLATE_BRANCH = "${params.TEMPLATE_BRANCH}" // CI/CD 템플릿 저장소 브랜치
     }
@@ -30,6 +30,13 @@ pipeline {
     }
 
     stages {
+        stage('Debug K8S Config') {
+            steps {
+                echo "K8S Config YAML:"
+                echo "${env.K8S_CONFIG}"
+            }
+        }
+
         stage('Checkout Application') {
             steps {
                 script {
