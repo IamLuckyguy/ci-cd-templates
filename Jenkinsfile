@@ -99,18 +99,7 @@ pipeline {
                                         .replaceAll('\\$\\{DOCKER_IMAGE\\}', env.DOCKER_IMAGE)
                                         .replaceAll('\\$\\{DOCKER_TAG\\}', env.DOCKER_TAG)
                                     writeFile file: "k8s/${template}.yaml", text: content
-                                    sh "pwd" // 디버깅 목적으로 파일 내용을 출력합니다.
-                                    sh "cat k8s/${template}.yaml" // 디버깅 목적으로 파일 내용을 출력합니다.
                                 }
-
-                                sh "echo \"Current container(Prepare Templates): \$HOSTNAME\""
-                                sh "echo \"env.IMAGE_TAG: ${env.IMAGE_TAG}\""
-
-                                // 파일 생성 확인
-                                sh "ls -l k8s/"
-                                sh "cat k8s/deployment.yaml"
-                                sh "cat k8s/service.yaml"
-                                sh "cat k8s/ingress.yaml"
                             }
 
                             stash includes: 'k8s/**,Dockerfile*', name: 'build-files'
@@ -123,14 +112,6 @@ pipeline {
                         container('kubectl') {
                             unstash 'build-files'
                             script {
-                                sh "pwd"
-                                sh "ls -al"
-                                sh "cat k8s/deployment.yaml"
-                                sh "cat k8s/service.yaml"
-                                sh "cat k8s/ingress.yaml"
-
-                                sh "echo \"Current container(Setup Kubernetes Resources): \$HOSTNAME\""
-
                                 def namespaceExists = sh(
                                     script: "kubectl get namespace ${env.K8S_NAMESPACE}",
                                     returnStatus: true
@@ -196,6 +177,9 @@ pipeline {
                                     // 빌드 파일을 Kaniko 컨테이너 내에 언스태시하여 사용 가능하도록 함
                                     unstash 'build-files'
 
+                                    sh "ls -al"
+                                    sh "pwd"
+
                                     def buildArgs = ""
 
                                     if (env.APP_TYPE == 'nodejs') {
@@ -238,7 +222,6 @@ pipeline {
                                 }
 
                                 sh """sed -i 's|image: .*|image: ${env.DOCKER_IMAGE}:${env.DOCKER_TAG}|' k8s/deployment.yaml"""
-                                sh "cat k8s/deployment.yaml"
 
                                 try {
                                     sh "kubectl apply -f k8s/deployment.yaml -n ${env.K8S_NAMESPACE}"
