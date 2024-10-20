@@ -102,7 +102,7 @@ pipeline {
                                 }
                             }
 
-                            stash includes: 'k8s/**,Dockerfile*', name: 'build-files'
+                            stash includes: 'k8s/**,Dockerfile', name: 'build-files'
                         }
                     }
                 }
@@ -193,7 +193,7 @@ pipeline {
                                         --context `pwd` \\
                                         --destination ${env.DOCKER_IMAGE}:${env.DOCKER_TAG} \\
                                         --destination ${env.DOCKER_IMAGE}:latest \\
-                                        --dockerfile `pwd`/Dockerfile-${env.APP_TYPE} \\
+                                        --dockerfile `pwd`/Dockerfile \\
                                         ${buildArgs}
                                     """
                                 }
