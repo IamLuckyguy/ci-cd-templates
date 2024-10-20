@@ -58,7 +58,7 @@ pipeline {
                             checkout([
                                 $class: 'GitSCM',
                                 branches: [[name: "${env.BRANCH}"]],
-                                userRemoteConfigs: [[url: "${scm.userRemoteConfigs[0].url}"]]
+                                userRemoteConfigs: [[url: "${scm.userRemoteConfigs[1].url}"]] // Pipeline > SCM 설정에서 두번째 저장소 URL 사용
                             ])
                         }
                     }
