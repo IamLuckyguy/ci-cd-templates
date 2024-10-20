@@ -177,9 +177,6 @@ pipeline {
                                     // 빌드 파일을 Kaniko 컨테이너 내에 언스태시하여 사용 가능하도록 함
                                     unstash 'build-files'
 
-                                    sh "ls -al"
-                                    sh "pwd"
-
                                     def buildArgs = ""
 
                                     if (env.APP_TYPE == 'nodejs') {
@@ -249,9 +246,11 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline execution completed"
-            // 임시 파일 정리
-            sh "rm -rf ci-cd-templates"
+            node {
+                echo "Pipeline execution completed"
+                // 임시 파일 정리
+                sh "rm -rf ci-cd-templates"
+            }
         }
         success {
             echo 'The Pipeline succeeded :)'
