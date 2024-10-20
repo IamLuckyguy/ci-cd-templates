@@ -113,7 +113,7 @@ pipeline {
                                 sh "cat k8s/ingress.yaml"
                             }
 
-                            stash includes: 'k8s/**,Dockerfile', name: 'build-files'
+                            stash includes: 'k8s/**,Dockerfile*', name: 'build-files'
                         }
                     }
                 }
@@ -193,6 +193,9 @@ pipeline {
                         container('kaniko') {
                             withEnv(['DOCKER_CONFIG=/kaniko/.docker']) {
                                 script {
+                                    // 빌드 파일을 Kaniko 컨테이너 내에 언스태시하여 사용 가능하도록 함
+                                    unstash 'build-files'
+
                                     def buildArgs = ""
 
                                     if (env.APP_TYPE == 'nodejs') {
