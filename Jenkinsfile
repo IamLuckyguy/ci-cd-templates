@@ -205,7 +205,7 @@ pipeline {
                                         --context `pwd` \
                                         --destination ${env.DOCKER_IMAGE}:${env.DOCKER_TAG} \
                                         --destination ${env.DOCKER_IMAGE}:latest \
-                                        --dockerfile `pwd`/Dockerfile-${env.APP_TYPE} \
+                                        --dockerfile Dockerfile-${env.APP_TYPE} \
                                         ${buildArgs}
                                     """
                                 }
