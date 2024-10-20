@@ -20,15 +20,20 @@ pipeline {
         DOCKER_USERNAME = "wondookong"
         K8S_NAMESPACE = "${params.PROJECT_NAME}-${params.ENV}" // 네임스페이스가 없을 경우 생성하도록
         DOCKER_IMAGE = "${DOCKER_USERNAME}/${K8S_NAMESPACE}-${params.APP_NAME}" // docker hub image 경로
-        TEMPLATE_REPO = "https://github.com/IamLuckyguy/ci-cd-templates.git"
+        TEMPLATE_REPO = "${scm.userRemoteConfigs[0].url}" // CI/CD 템플릿 저장소 URL
         TEMPLATE_BRANCH = "${params.TEMPLATE_BRANCH}" // CI/CD 템플릿 저장소 브랜치
+        APP_REPO = "${scm.userRemoteConfigs[1].url}" // 애플리케이션 저장소 URL
     }
 
     stages {
         stage('Checkout and Setup') {
             agent any
             steps {
-                checkout scm
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "${env.TEMPLATE_BRANCH}"]],
+                    userRemoteConfigs: [[url: "${env.TEMPLATE_REPO}"]]
+                ])
                 script {
                     env.K8S_CONFIG = readFile 'k8s/jenkins-pod-template.yaml'
                 }
@@ -58,7 +63,7 @@ pipeline {
                             checkout([
                                 $class: 'GitSCM',
                                 branches: [[name: "${env.BRANCH}"]],
-                                userRemoteConfigs: [[url: "${scm.userRemoteConfigs[1].url}"]] // Pipeline > SCM 설정에서 두번째 저장소 URL 사용
+                                userRemoteConfigs: [[url: "${env.APP_REPO}"]]
                             ])
                         }
                     }
@@ -70,7 +75,8 @@ pipeline {
                             script {
                                 // 템플릿 저장소 클론
                                 dir('ci-cd-templates') {
-                                    git url: env.TEMPLATE_REPO, branch: env.TEMPLATE_BRANCH
+                                    git url: env.TEMPLATE_REPO,
+                                    branch: env.TEMPLATE_BRANCH
                                 }
 
                                 // Dockerfile 복사
