@@ -104,7 +104,7 @@ pipeline {
                                 }
 
                                 sh "echo \"Current container(Prepare Templates): \$HOSTNAME\""
-                                sh "echo \"env.IMAGE_TAG: ${env.APP_TYPE}\""
+                                sh "echo \"env.IMAGE_TAG: ${env.IMAGE_TAG}\""
 
                                 // 파일 생성 확인
                                 sh "ls -l k8s/"
@@ -202,11 +202,11 @@ pipeline {
                                     }
 
                                     sh """
-                                        /kaniko/executor \
-                                        --context `pwd` \
-                                        --destination ${env.DOCKER_IMAGE}:${env.DOCKER_TAG} \
-                                        --destination ${env.DOCKER_IMAGE}:latest \
-                                        --dockerfile Dockerfile-${env.APP_TYPE} \
+                                        /kaniko/executor \\
+                                        --context `pwd` \\
+                                        --destination ${env.DOCKER_IMAGE}:${env.DOCKER_TAG} \\
+                                        --destination ${env.DOCKER_IMAGE}:latest \\
+                                        --dockerfile `pwd`/Dockerfile-${env.APP_TYPE} \\
                                         ${buildArgs}
                                     """
                                 }
