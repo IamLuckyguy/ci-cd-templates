@@ -104,6 +104,7 @@ pipeline {
                                 }
 
                                 sh "echo \"Current container(Prepare Templates): \$HOSTNAME\""
+                                sh "echo \"env.IMAGE_TAG: ${env.APP_TYPE}"
 
                                 // 파일 생성 확인
                                 sh "ls -l k8s/"
