@@ -52,8 +52,6 @@ pipeline {
                 stage('Debug K8S Config') {
                     steps {
                         unstash 'source'
-                        echo "K8S Config YAML:"
-                        echo "${env.K8S_CONFIG}"
                     }
                 }
 
