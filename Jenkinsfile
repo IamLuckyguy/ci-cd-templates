@@ -33,7 +33,7 @@ pipeline {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: "${env.TEMPLATE_BRANCH}"]],
+                    branches: [[name: "*/${env.TEMPLATE_BRANCH}"]],
                     userRemoteConfigs: [[url: "${env.TEMPLATE_REPO}"]]
                 ])
                 stash name: 'source', includes: '**'
