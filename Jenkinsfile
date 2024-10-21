@@ -22,28 +22,13 @@ pipeline {
         DOCKER_IMAGE = "${DOCKER_USERNAME}/${K8S_NAMESPACE}-${params.APP_NAME}" // docker hub image 경로
         TEMPLATE_REPO = "${scm.userRemoteConfigs[0].url}" // CI/CD 템플릿 저장소 URL
         TEMPLATE_BRANCH = "${params.TEMPLATE_BRANCH}" // CI/CD 템플릿 저장소 브랜치
-        APP_REPO = "${scm.userRemoteConfigs[1].url}" // 애플리케이션 저장소 URL
+        APP_REPO = "${params.APP_REPO}" // 애플리케이션 저장소 URL
         NODE_ARCH = "${params.ENV == 'prod' ? 'amd64' : 'arm64'}" // prod 환경일 때는 amd64, dev 환경일 때는 arm64
         CLUSTER_ISSUER = "${params.ENV == 'prod' ? 'letsencrypt-prod' : 'letsencrypt-staging'}" // prod 환경일 때는 letsencrypt-prod, 그 외 환경일 때는 letsencrypt-staging
         INTERNAL_IP_RANGE = "${params.ENV == 'prod' ? '' : '192.168.100.0/8'}" // prod 환경이 아닌 경우 지정된 IP 대역만 접근 가능
     }
 
     stages {
-        stage('Clear Cache') {
-            steps {
-                script {
-                    def jenkinsHome = Jenkins.getInstance().getRootDir()
-                    def cacheDir = new File(jenkinsHome, "caches")
-                    if (cacheDir.exists()) {
-                        cacheDir.deleteDir()
-                        echo "Cache directory deleted: ${cacheDir}"
-                    } else {
-                        echo "Cache directory not found: ${cacheDir}"
-                    }
-                }
-            }
-        }
-
         stage('Prepare Jenkins Pod Template') {
             agent any
             steps {
