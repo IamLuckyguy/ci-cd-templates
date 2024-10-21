@@ -43,6 +43,8 @@ pipeline {
                     def podTemplateContent = readFile "k8s/jenkins-pod-template.yaml"
                     podTemplateContent = podTemplateContent.replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
                     env.K8S_CONFIG = podTemplateContent
+
+                    echo "podTemplateContent: ${podTemplateContent}"
                     echo "Jenkins Pod Template: ${env.K8S_CONFIG}"
                 }
             }
