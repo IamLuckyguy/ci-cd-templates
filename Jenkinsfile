@@ -31,7 +31,7 @@ pipeline {
     stages {
         stage('Checkout and Setup') {
             steps {
-                node {
+                node('Checkout CI/CD Templates') {
                     script {
                         try {
                             checkout([
