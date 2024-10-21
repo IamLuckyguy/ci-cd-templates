@@ -31,12 +31,14 @@ pipeline {
     stages {
         stage('Checkout and Setup') {
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "*/${env.TEMPLATE_BRANCH}"]],
-                    userRemoteConfigs: [[url: "${env.TEMPLATE_REPO}", credentialsId: 'github-access']]
-                ])
-                stash name: 'source', includes: '**'
+                script {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "*/${env.TEMPLATE_BRANCH}"]],
+                        userRemoteConfigs: [[url: "${env.TEMPLATE_REPO}", credentialsId: 'github-access']]
+                    ])
+                    stash name: 'source', includes: '**'
+                }
             }
         }
 
