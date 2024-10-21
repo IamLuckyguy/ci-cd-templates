@@ -29,8 +29,6 @@ pipeline {
     }
 
     stages {
-        def podTemplate
-
         stage('Checkout and Setup') {
             steps {
                 stash name: 'source', includes: '**'
@@ -43,10 +41,9 @@ pipeline {
                     sh "ls -al k8s"
                     def podTemplateContent = readFile "k8s/jenkins-pod-template.yaml"
                     podTemplateContent = podTemplateContent.replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
-                    podTemplate = podTemplateContent
+                    env.POD_TEMPLATE_CONTENT = podTemplateContent
 
-                    echo "podTemplateContent: ${podTemplateContent}"
-                    echo "Jenkins Pod Template: ${podTemplate}"
+                    echo "podTemplateContent: ${env.POD_TEMPLATE_CONTENT}"
                 }
             }
         }
@@ -54,7 +51,7 @@ pipeline {
         stage('Main Pipeline') {
             agent {
                 kubernetes {
-                    yaml "${podTemplate}"
+                    yaml "${env.POD_TEMPLATE_CONTENT}"
                 }
             }
 
