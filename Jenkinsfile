@@ -37,12 +37,9 @@ pipeline {
         }
 
         stage('Prepare Jenkins Pod Template') {
-            agent any
             steps {
                 script {
-                    sh "pwd"
-                    sh "ls -al"
-                    def podTemplateContent = readFile "ci-cd-templates/k8s/jenkins-pod-template.yaml"
+                    def podTemplateContent = readFile "k8s/jenkins-pod-template.yaml"
                     podTemplateContent = podTemplateContent.replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
                     env.K8S_CONFIG = podTemplateContent
                     echo "Jenkins Pod Template: ${env.K8S_CONFIG}"
