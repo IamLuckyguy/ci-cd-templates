@@ -274,7 +274,7 @@ pipeline {
 
     post {
         always {
-            node {
+            node('master') {
                 echo "Pipeline execution completed"
                 // 임시 파일 정리
                 sh "rm -rf ci-cd-templates"
