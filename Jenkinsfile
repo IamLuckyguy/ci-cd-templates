@@ -29,6 +29,21 @@ pipeline {
     }
 
     stages {
+        stage('Clear Cache') {
+            steps {
+                script {
+                    def jenkinsHome = Jenkins.getInstance().getRootDir()
+                    def cacheDir = new File(jenkinsHome, "caches")
+                    if (cacheDir.exists()) {
+                        cacheDir.deleteDir()
+                        echo "Cache directory deleted: ${cacheDir}"
+                    } else {
+                        echo "Cache directory not found: ${cacheDir}"
+                    }
+                }
+            }
+        }
+
         stage('Prepare Jenkins Pod Template') {
             agent any
             steps {
