@@ -31,29 +31,15 @@ pipeline {
     stages {
         stage('Checkout and Setup') {
             steps {
-                script {
-                    try {
-                        checkout([
-                            $class: 'GitSCM',
-                            branches: [[name: "*/${env.TEMPLATE_BRANCH}"]],
-                            userRemoteConfigs: [[url: "${env.TEMPLATE_REPO}", credentialsId: 'github-access']]
-                        ])
-                        echo "Checkout completed successfully."
-                    } catch (Exception e) {
-                        echo "Checkout failed with error: ${e.message}"
-                        error "Stopping the pipeline due to checkout failure."
-                    }
-                }
                 stash name: 'source', includes: '**'
             }
         }
-
 
         stage('Prepare Jenkins Pod Template') {
             agent any
             steps {
                 script {
-                    def podTemplateContent = libraryResource 'jenkins-pod-template.yaml'
+                    def podTemplateContent = readFile "ci-cd-templates/k8s/jenkins-pod-template.yaml"
                     podTemplateContent = podTemplateContent.replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
                     env.K8S_CONFIG = podTemplateContent
                 }
