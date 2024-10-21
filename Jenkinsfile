@@ -1,5 +1,5 @@
 pipeline {
-    agent none
+    agent any
 
     environment {
         // Jenkins 로 부터 전달 받은 파라미터, 환경 변수를 사용하기 위한 선언
