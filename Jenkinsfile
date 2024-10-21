@@ -31,20 +31,22 @@ pipeline {
     stages {
         stage('Checkout and Setup') {
             steps {
-                script {
-                    try {
-                        checkout([
-                            $class: 'GitSCM',
-                            branches: [[name: "*/${env.TEMPLATE_BRANCH}"]],
-                            userRemoteConfigs: [[url: "${env.TEMPLATE_REPO}", credentialsId: 'github-access']]
-                        ])
-                        echo "Checkout completed successfully."
-                    } catch (Exception e) {
-                        echo "Checkout failed with error: ${e.message}"
-                        error "Stopping the pipeline due to checkout failure."
+                node {
+                    script {
+                        try {
+                            checkout([
+                                $class: 'GitSCM',
+                                branches: [[name: "*/${env.TEMPLATE_BRANCH}"]],
+                                userRemoteConfigs: [[url: "${env.TEMPLATE_REPO}", credentialsId: 'github-access']]
+                            ])
+                            echo "Checkout completed successfully."
+                        } catch (Exception e) {
+                            echo "Checkout failed with error: ${e.message}"
+                            error "Stopping the pipeline due to checkout failure."
+                        }
                     }
+                    stash name: 'source', includes: '**'
                 }
-                stash name: 'source', includes: '**'
             }
         }
 
