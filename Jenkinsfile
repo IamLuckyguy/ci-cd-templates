@@ -259,7 +259,7 @@ pipeline {
 
     post {
         always {
-            node('Complete Pipeline, Clean Up') {
+            node {
                 echo "Pipeline execution completed"
                 // 임시 파일 정리
                 sh "rm -rf ci-cd-templates"
