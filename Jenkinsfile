@@ -26,6 +26,7 @@ pipeline {
         NODE_ARCH = "${params.ENV == 'prod' ? 'amd64' : 'arm64'}" // prod 환경일 때는 amd64, dev 환경일 때는 arm64
         CLUSTER_ISSUER = "${params.ENV == 'prod' ? 'letsencrypt-prod' : 'letsencrypt-staging'}" // prod 환경일 때는 letsencrypt-prod, 그 외 환경일 때는 letsencrypt-staging
         INTERNAL_IP_RANGE = "${params.ENV == 'prod' ? '' : '192.168.100.0/8'}" // prod 환경이 아닌 경우 지정된 IP 대역만 접근 가능
+        K8S_CONFIG = "" // Jenkins Pod Template 설정
     }
 
     stages {
@@ -42,6 +43,7 @@ pipeline {
                     def podTemplateContent = readFile "ci-cd-templates/k8s/jenkins-pod-template.yaml"
                     podTemplateContent = podTemplateContent.replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
                     env.K8S_CONFIG = podTemplateContent
+                    echo "Jenkins Pod Template: ${env.K8S_CONFIG}"
                 }
             }
         }
