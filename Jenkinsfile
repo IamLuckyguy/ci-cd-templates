@@ -29,6 +29,17 @@ pipeline {
     }
 
     stages {
+        stage('Checkout and Setup') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "${env.TEMPLATE_BRANCH}"]],
+                    userRemoteConfigs: [[url: "${env.TEMPLATE_REPO}"]]
+                ])
+                stash name: 'source', includes: '**'
+            }
+        }
+
         stage('Prepare Jenkins Pod Template') {
             agent any
             steps {
@@ -48,17 +59,6 @@ pipeline {
             }
 
             stages {
-                stage('Checkout and Setup') {
-                    steps {
-                        checkout([
-                            $class: 'GitSCM',
-                            branches: [[name: "${env.TEMPLATE_BRANCH}"]],
-                            userRemoteConfigs: [[url: "${env.TEMPLATE_REPO}"]]
-                        ])
-                        stash name: 'source', includes: '**'
-                    }
-                }
-
                 stage('Checkout Application') {
                     steps {
                         script {
