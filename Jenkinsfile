@@ -29,13 +29,9 @@ pipeline {
     }
 
     stages {
-        stage('Checkout and Setup') {
+        stage('Checkout CI/CD Templates') {
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "*/${env.TEMPLATE_BRANCH}"]],
-                    userRemoteConfigs: [[url: "${env.TEMPLATE_REPO}"]]
-                ])
+                checkout scm // ci-cd-templates 저장소 체크아웃
                 stash name: 'source', includes: '**'
             }
         }
