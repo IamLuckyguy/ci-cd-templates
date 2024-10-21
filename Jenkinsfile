@@ -40,6 +40,8 @@ pipeline {
             agent any
             steps {
                 script {
+                    sh "pwd"
+                    sh "ls -al"
                     def podTemplateContent = readFile "ci-cd-templates/k8s/jenkins-pod-template.yaml"
                     podTemplateContent = podTemplateContent.replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
                     env.K8S_CONFIG = podTemplateContent
