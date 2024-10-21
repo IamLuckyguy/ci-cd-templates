@@ -32,15 +32,22 @@ pipeline {
         stage('Checkout and Setup') {
             steps {
                 script {
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: "*/${env.TEMPLATE_BRANCH}"]],
-                        userRemoteConfigs: [[url: "${env.TEMPLATE_REPO}", credentialsId: 'github-access']]
-                    ])
-                    stash name: 'source', includes: '**'
+                    try {
+                        checkout([
+                            $class: 'GitSCM',
+                            branches: [[name: "*/${env.TEMPLATE_BRANCH}"]],
+                            userRemoteConfigs: [[url: "${env.TEMPLATE_REPO}", credentialsId: 'github-access']]
+                        ])
+                        echo "Checkout completed successfully."
+                    } catch (Exception e) {
+                        echo "Checkout failed with error: ${e.message}"
+                        error "Stopping the pipeline due to checkout failure."
+                    }
                 }
+                stash name: 'source', includes: '**'
             }
         }
+
 
         stage('Prepare Jenkins Pod Template') {
             agent any
