@@ -26,10 +26,11 @@ pipeline {
         NODE_ARCH = "${params.ENV == 'prod' ? 'amd64' : 'arm64'}" // prod 환경일 때는 amd64, dev 환경일 때는 arm64
         CLUSTER_ISSUER = "${params.ENV == 'prod' ? 'letsencrypt-prod' : 'letsencrypt-staging'}" // prod 환경일 때는 letsencrypt-prod, 그 외 환경일 때는 letsencrypt-staging
         INTERNAL_IP_RANGE = "${params.ENV == 'prod' ? '' : '192.168.100.0/8'}" // prod 환경이 아닌 경우 지정된 IP 대역만 접근 가능
-        K8S_CONFIG = "" // Jenkins Pod Template 설정
     }
 
     stages {
+        def podTemplate
+
         stage('Checkout and Setup') {
             steps {
                 stash name: 'source', includes: '**'
@@ -42,10 +43,10 @@ pipeline {
                     sh "ls -al k8s"
                     def podTemplateContent = readFile "k8s/jenkins-pod-template.yaml"
                     podTemplateContent = podTemplateContent.replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
-                    env.K8S_CONFIG = podTemplateContent
+                    podTemplate = podTemplateContent
 
                     echo "podTemplateContent: ${podTemplateContent}"
-                    echo "Jenkins Pod Template: ${env.K8S_CONFIG}"
+                    echo "Jenkins Pod Template: ${podTemplate}"
                 }
             }
         }
@@ -53,7 +54,7 @@ pipeline {
         stage('Main Pipeline') {
             agent {
                 kubernetes {
-                    yaml "${env.K8S_CONFIG}"
+                    yaml "${podTemplate}"
                 }
             }
 
