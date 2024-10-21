@@ -158,6 +158,8 @@ pipeline {
                                     returnStatus: true
                                 ) == 0
 
+                                echo "Ingress exists status: ${ingressExists}"
+
                                 if (!ingressExists) {
                                     echo "Ingress does not exist. Creating new Ingress..."
                                     sh "kubectl apply -f k8s/ingress.yaml -n ${env.K8S_NAMESPACE}"
