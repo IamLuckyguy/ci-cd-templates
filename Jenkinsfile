@@ -175,7 +175,7 @@ pipeline {
                                     unstash 'build-files'
 
                                     def buildArgs = ""
-                                    def customPlatform = "--custom-platform=linux/amd64"
+                                    def platform = "linux/amd64"
 
                                     if (env.APP_TYPE == 'nodejs') {
                                         buildArgs = "--build-arg NODE_ENV=${env.ENV}"
@@ -184,7 +184,7 @@ pipeline {
                                     }
 
                                     if (env.ENV == 'dev') { // dev 환경일 때는 라즈베리파이5 arm64로 빌드
-                                        customPlatform = "--custom-platform=linux/arm64"
+                                        platform = "linux/arm64"
                                         buildArgs += " --build-arg PLATFORM=linux/arm64"
                                     }
 
@@ -194,7 +194,7 @@ pipeline {
                                         --destination ${env.DOCKER_IMAGE}:${env.DOCKER_TAG} \\
                                         --destination ${env.DOCKER_IMAGE}:latest \\
                                         --dockerfile `pwd`/Dockerfile \\
-                                        ${customPlatform} \\
+                                        --custom-platform=${platform} \\
                                         ${buildArgs}
                                     """
                                 }
