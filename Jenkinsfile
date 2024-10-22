@@ -185,6 +185,7 @@ pipeline {
 
                                     if (env.ENV == 'dev') { // dev 환경일 때는 라즈베리파이5 arm64로 빌드
                                         customPlatform = "--custom-platform=linux/arm64"
+                                        buildArgs += " --build-arg PLATFORM=linux/arm64"
                                     }
 
                                     sh """

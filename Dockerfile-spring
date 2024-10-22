@@ -1,11 +1,14 @@
+ARG PLATFORM=linux/amd64
+RUN echo "Building for platform: ${PLATFORM}"
+
 # Build stage
-FROM gradle:8.10.2-jdk17 AS builder
+FROM --platform=${PLATFORM} gradle:8.10.2-jdk17 AS builder
 WORKDIR /app
 COPY . .
 RUN gradle build --no-daemon
 
 # Production stage
-FROM eclipse-temurin:17-jdk-jammy
+FROM --platform=${PLATFORM} eclipse-temurin:17-jdk-jammy
 WORKDIR /app
 COPY --from=builder /app/build/libs/*.jar ./
 ARG SPRING_PROFILES_ACTIVE
