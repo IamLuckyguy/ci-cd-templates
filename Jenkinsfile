@@ -194,7 +194,7 @@ pipeline {
                                         --destination ${env.DOCKER_IMAGE}:${env.DOCKER_TAG} \\
                                         --destination ${env.DOCKER_IMAGE}:latest \\
                                         --dockerfile `pwd`/Dockerfile \\
-                                        --custom-platform=${platform} \\
+                                        --custom-platform ${platform} \\
                                         ${buildArgs}
                                     """
                                 }
