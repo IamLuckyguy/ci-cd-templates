@@ -182,14 +182,13 @@ pipeline {
                                     unstash 'build-files'
 
                                     def buildArgs = ""
+                                    def platForm = "--platform linux/amd64"
 
                                     if (env.APP_TYPE == 'nodejs') {
                                         buildArgs = "--build-arg NODE_ENV=${env.ENV}"
 
-                                        if (env.ENV == 'prod') {
-                                            buildArgs += " --build-arg PLATFORM=linux/amd64"
-                                        } else if (env.ENV == 'dev') {
-                                            buildArgs += " --build-arg PLATFORM=linux/arm64"
+                                        if (env.ENV == 'dev') {
+                                            platForm = "--platform linux/arm64"
                                         }
                                     } else if (env.APP_TYPE == 'spring') {
                                         buildArgs = "--build-arg SPRING_PROFILES_ACTIVE=${env.ENV}"
@@ -201,6 +200,7 @@ pipeline {
                                         --destination ${env.DOCKER_IMAGE}:${env.DOCKER_TAG} \\
                                         --destination ${env.DOCKER_IMAGE}:latest \\
                                         --dockerfile `pwd`/Dockerfile \\
+                                        ${platForm} \\
                                         ${buildArgs}
                                     """
                                 }
