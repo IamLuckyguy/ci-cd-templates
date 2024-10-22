@@ -29,26 +29,19 @@ pipeline {
     }
 
     stages {
-        stage('Checkout and Setup') {
+        stage('배포 파이프라인 체크아웃, 템플릿 처리') {
             steps {
                 stash name: 'source', includes: '**'
-            }
-        }
 
-        stage('Prepare Jenkins Pod Template') {
-            steps {
                 script {
-                    sh "ls -al k8s"
                     def podTemplateContent = readFile "k8s/jenkins-pod-template.yaml"
                     podTemplateContent = podTemplateContent.replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
                     env.POD_TEMPLATE_CONTENT = podTemplateContent
-
-                    echo "podTemplateContent: ${env.POD_TEMPLATE_CONTENT}"
                 }
             }
         }
 
-        stage('Main Pipeline') {
+        stage('주요 파이프라인 진입') {
             agent {
                 kubernetes {
                     yaml "${env.POD_TEMPLATE_CONTENT}"
@@ -56,7 +49,7 @@ pipeline {
             }
 
             stages {
-                stage('Checkout Application') {
+                stage('어플리케이션 체크아웃') {
                     steps {
                         script {
                             checkout([
@@ -68,7 +61,7 @@ pipeline {
                     }
                 }
 
-                stage('Prepare Templates') {
+                stage('K8S 템플릿 파일 처리') {
                     steps {
                         container('kubectl') {
                             script {
@@ -109,7 +102,7 @@ pipeline {
                     }
                 }
 
-                stage('Setup Kubernetes Resources') {
+                stage('K8S 리소스 생성') {
                     steps {
                         container('kubectl') {
                             unstash 'build-files'
@@ -168,7 +161,7 @@ pipeline {
                     }
                 }
 
-                stage('Build and Push with Kaniko') {
+                stage('어플리케이션 빌드, 이미지 생성 후 푸시') {
                     when {
                         expression { // IMAGE_TAG 가 빈 값일 때만 빌드를 수행
                             return env.IMAGE_TAG == null || env.IMAGE_TAG.isEmpty() || env.IMAGE_TAG == ''
@@ -209,7 +202,7 @@ pipeline {
                     }
                 }
 
-                stage('Deploy to Kubernetes') {
+                stage('K8S 배포') {
                     steps {
                         container('kubectl') {
                             script {
