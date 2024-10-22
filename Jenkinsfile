@@ -174,7 +174,7 @@ pipeline {
                                     // 빌드 파일을 Kaniko 컨테이너 내에 언스태시하여 사용 가능하도록 함
                                     unstash 'build-files'
 
-                                    def platform = "--custom-platform linux/arm64"
+                                    def platform = "--custom-platform=linux/arm64"
                                     def buildArgs1 = "--build-arg SPRING_PROFILES_ACTIVE=dev"
                                     def buildArgs2 = "--build-arg PLATFORM=linux/arm64"
 
@@ -185,7 +185,7 @@ pipeline {
                                     }
 
                                     if (env.ENV == 'prod') { // dev 환경일 때는 라즈베리파이5 arm64로 빌드
-                                        platform = "--custom-platform linux/amd64"
+                                        platform = "--custom-platform=linux/amd64"
                                         buildArgs2 += "--build-arg PLATFORM=linux/amd64"
                                     }
 

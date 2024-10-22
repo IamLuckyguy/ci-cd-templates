@@ -1,5 +1,4 @@
 ARG PLATFORM=linux/amd64
-RUN echo "Building for platform: ${PLATFORM}"
 
 # Build stage
 FROM --platform=${PLATFORM} gradle:8.10.2-jdk17 AS builder
