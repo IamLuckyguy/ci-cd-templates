@@ -64,16 +64,27 @@ pipeline {
                                         returnStdout: true
                                     ).trim()
 
-                                    env.ACTIVE_COLOR = activeService ?: "blue"
-                                    env.TARGET_COLOR = env.ACTIVE_COLOR == "blue" ? "green" : "blue"
+                                    // null 체크를 더 엄격하게 수정
+                                    if (activeService == null || activeService.isEmpty() || activeService == "null") {
+                                        echo "서비스가 없거나 color 라벨이 없습니다. 초기 배포로 진행합니다."
+                                        env.ACTIVE_COLOR = "none"
+                                        env.TARGET_COLOR = "blue"
+                                    } else {
+                                        env.ACTIVE_COLOR = activeService
+                                        env.TARGET_COLOR = env.ACTIVE_COLOR == "blue" ? "green" : "blue"
+                                    }
 
                                     echo "현재 Active 컬러: ${env.ACTIVE_COLOR}"
                                     echo "배포 Target 컬러: ${env.TARGET_COLOR}"
                                 } catch (Exception e) {
-                                    echo "서비스가 없습니다. 초기 배포로 진행합니다."
+                                    echo "서비스 확인 중 오류가 발생했습니다. 초기 배포로 진행합니다."
                                     env.ACTIVE_COLOR = "none"
                                     env.TARGET_COLOR = "blue"
                                 }
+
+                                // 환경변수가 null이 아님을 보장
+                                env.ACTIVE_COLOR = env.ACTIVE_COLOR ?: "none"
+                                env.TARGET_COLOR = env.TARGET_COLOR ?: "blue"
                             }
                         }
                     }
