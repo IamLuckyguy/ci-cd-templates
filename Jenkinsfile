@@ -57,36 +57,37 @@ pipeline {
                     steps {
                         container('kubectl') {
                             script {
+                                def activeColor = "none"
+                                def targetColor = "blue"
+
                                 try {
-                                    // 현재 active 서비스의 color 확인
                                     def activeService = sh(
                                         script: "kubectl get service ${env.APP_NAME} -n ${env.K8S_NAMESPACE} -o jsonpath='{.metadata.labels.color}'",
                                         returnStdout: true
                                     ).trim()
 
-                                    echo "activeService: ${activeService}"
-
-                                    // null 체크를 더 엄격하게 수정
                                     if (activeService == null || activeService.isEmpty() || activeService == "null") {
                                         echo "서비스가 없거나 color 라벨이 없습니다. 초기 배포로 진행합니다."
-                                        env.ACTIVE_COLOR = "none"
-                                        env.TARGET_COLOR = "blue"
                                     } else {
-                                        env.ACTIVE_COLOR = activeService
-                                        env.TARGET_COLOR = env.ACTIVE_COLOR == "blue" ? "green" : "blue"
+                                        activeColor = activeService
+                                        targetColor = activeColor == "blue" ? "green" : "blue"
                                     }
 
-                                    echo "현재 Active 컬러: ${env.ACTIVE_COLOR}"
-                                    echo "배포 Target 컬러: ${env.TARGET_COLOR}"
                                 } catch (Exception e) {
                                     echo "서비스 확인 중 오류가 발생했습니다. 초기 배포로 진행합니다."
-                                    env.ACTIVE_COLOR = "none"
-                                    env.TARGET_COLOR = "blue"
                                 }
 
-                                // 환경변수가 null이 아님을 보장
-                                env.ACTIVE_COLOR = env.ACTIVE_COLOR ?: "none"
-                                env.TARGET_COLOR = env.TARGET_COLOR ?: "blue"
+                                withEnv([
+                                    "ACTIVE_COLOR=${activeColor}",
+                                    "TARGET_COLOR=${targetColor}"
+                                ]) {
+                                    echo "현재 Active 컬러: ${env.ACTIVE_COLOR}"
+                                    echo "배포 Target 컬러: ${env.TARGET_COLOR}"
+
+                                    // 이후 스테이지에서 사용하기 위해 전역 환경변수로 설정
+                                    env.ACTIVE_COLOR = activeColor
+                                    env.TARGET_COLOR = targetColor
+                                }
                             }
                         }
                     }
