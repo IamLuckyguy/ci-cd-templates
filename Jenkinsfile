@@ -25,7 +25,7 @@ pipeline {
         APP_REPO = "${params.APP_REPO}" // 애플리케이션 저장소 URL
         NODE_ARCH = "${params.ENV == 'prod' ? 'amd64' : 'arm64'}" // prod 환경일 때는 amd64, dev 환경일 때는 arm64
         CLUSTER_ISSUER = "${params.ENV == 'prod' ? 'letsencrypt-prod' : 'letsencrypt-staging'}" // prod 환경일 때는 letsencrypt-prod, 그 외 환경일 때는 letsencrypt-staging
-        INTERNAL_IP_RANGE = "${params.ENV == 'prod' ? '' : '192.168.100.0/24'}" // prod 환경이 아닌 경우 지정된 IP 대역만 접근 가능
+        INTERNAL_IP_RANGE = "${params.ENV == 'prod' ? '0.0.0.0/0' : '192.168.100.0/24'}" // prod 환경이 아닌 경우 지정된 IP 대역만 접근 가능
     }
 
     stages {
