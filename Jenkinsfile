@@ -171,12 +171,11 @@ pipeline {
                         container('kaniko') {
                             withEnv(['DOCKER_CONFIG=/kaniko/.docker']) {
                                 script {
-                                    // 빌드 파일을 Kaniko 컨테이너 내에 언스태시하여 사용 가능하도록 함
                                     unstash 'build-files'
 
                                     def platform = "--custom-platform=linux/arm64"
-                                    def buildArgs1 = "--build-arg SPRING_PROFILES_ACTIVE=dev"
-                                    def buildArgs2 = "--build-arg PLATFORM=linux/arm64"
+                                    def buildArgs1 = ""
+                                    def buildArgs2 = ""
 
                                     if (env.APP_TYPE == 'nodejs') {
                                         buildArgs1 = "--build-arg NODE_ENV=${env.ENV}"
@@ -184,9 +183,11 @@ pipeline {
                                         buildArgs1 = "--build-arg SPRING_PROFILES_ACTIVE=${env.ENV}"
                                     }
 
-                                    if (env.ENV == 'prod') { // dev 환경일 때는 라즈베리파이5 arm64로 빌드
+                                    if (env.ENV == 'prod') {
                                         platform = "--custom-platform=linux/amd64"
-                                        buildArgs2 += "--build-arg PLATFORM=linux/amd64"
+                                        buildArgs2 = "--build-arg PLATFORM=linux/amd64"
+                                    } else {
+                                        buildArgs2 = "--build-arg PLATFORM=linux/arm64"
                                     }
 
                                     sh """
@@ -197,7 +198,7 @@ pipeline {
                                         --destination ${env.DOCKER_IMAGE}:latest \\
                                         --dockerfile `pwd`/Dockerfile \\
                                         ${buildArgs1} \\
-                                        ${buildArgs2} \\
+                                        ${buildArgs2}
                                     """
                                 }
                             }
