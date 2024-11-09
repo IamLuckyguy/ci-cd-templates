@@ -64,6 +64,8 @@ pipeline {
                                         returnStdout: true
                                     ).trim()
 
+                                    echo "activeService: ${activeService}"
+
                                     // null 체크를 더 엄격하게 수정
                                     if (activeService == null || activeService.isEmpty() || activeService == "null") {
                                         echo "서비스가 없거나 color 라벨이 없습니다. 초기 배포로 진행합니다."
