@@ -26,6 +26,10 @@ pipeline {
         NODE_ARCH = "${params.ENV == 'prod' ? 'amd64' : 'arm64'}" // prod 환경일 때는 amd64, dev 환경일 때는 arm64
         CLUSTER_ISSUER = "${params.ENV == 'prod' ? 'letsencrypt-prod' : 'letsencrypt-staging'}" // prod 환경일 때는 letsencrypt-prod, 그 외 환경일 때는 letsencrypt-staging
         INTERNAL_IP_RANGE = "${params.ENV == 'prod' ? '0.0.0.0/0' : '192.168.100.0/24'}" // prod 환경이 아닌 경우 지정된 IP 대역만 접근 가능
+
+        // 블루-그린 배포를 위한 추가 환경 변수
+        ACTIVE_COLOR = ""
+        TARGET_COLOR = ""
     }
 
     stages {
@@ -49,6 +53,32 @@ pipeline {
             }
 
             stages {
+                stage('현재 Active 컬러 확인') {
+                    steps {
+                        container('kubectl') {
+                            script {
+                                try {
+                                    // 현재 active 서비스의 color 확인
+                                    def activeService = sh(
+                                        script: "kubectl get service ${env.APP_NAME} -n ${env.K8S_NAMESPACE} -o jsonpath='{.metadata.labels.color}'",
+                                        returnStdout: true
+                                    ).trim()
+
+                                    env.ACTIVE_COLOR = activeService ?: "blue"
+                                    env.TARGET_COLOR = env.ACTIVE_COLOR == "blue" ? "green" : "blue"
+
+                                    echo "현재 Active 컬러: ${env.ACTIVE_COLOR}"
+                                    echo "배포 Target 컬러: ${env.TARGET_COLOR}"
+                                } catch (Exception e) {
+                                    echo "서비스가 없습니다. 초기 배포로 진행합니다."
+                                    env.ACTIVE_COLOR = "none"
+                                    env.TARGET_COLOR = "blue"
+                                }
+                            }
+                        }
+                    }
+                }
+
                 stage('어플리케이션 체크아웃') {
                     steps {
                         script {
@@ -71,33 +101,38 @@ pipeline {
                                     branch: env.TEMPLATE_BRANCH
                                 }
 
-                                // Dockerfile 복사
                                 sh "cp ci-cd-templates/Dockerfile-${env.APP_TYPE} Dockerfile"
-
                                 sh "mkdir -p k8s"
 
-                                // K8s 템플릿 처리
-                                def templates = ['deployment', 'service', 'ingress']
-                                templates.each { template ->
-                                    def content = readFile "ci-cd-templates/k8s/${template}-template.yaml"
-                                    content = content.replaceAll('\\$\\{APP_NAME\\}', env.APP_NAME)
-                                        .replaceAll('\\$\\{PROJECT_NAME\\}', env.PROJECT_NAME)
-                                        .replaceAll('\\$\\{ENV\\}', env.ENV)
-                                        .replaceAll('\\$\\{COMPONENT\\}', env.COMPONENT)
-                                        .replaceAll('\\$\\{REPLICAS\\}', env.REPLICAS)
-                                        .replaceAll('\\$\\{CONTAINER_PORT\\}', env.CONTAINER_PORT)
-                                        .replaceAll('\\$\\{SERVICE_PORT\\}', env.SERVICE_PORT)
-                                        .replaceAll('\\$\\{DOMAIN\\}', env.DOMAIN)
-                                        .replaceAll('\\$\\{DOCKER_IMAGE\\}', env.DOCKER_IMAGE)
-                                        .replaceAll('\\$\\{DOCKER_TAG\\}', env.DOCKER_TAG)
-                                        .replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
-                                        .replaceAll('\\$\\{CLUSTER_ISSUER\\}', env.CLUSTER_ISSUER)
-                                        .replaceAll('\\$\\{INTERNAL_IP_RANGE\\}', env.INTERNAL_IP_RANGE)
-                                    writeFile file: "k8s/${template}.yaml", text: content
-                                }
-                            }
+                                // Target 컬러용 Deployment 템플릿 처리
+                                def deploymentContent = readFile "ci-cd-templates/k8s/deployment-template.yaml"
+                                deploymentContent = deploymentContent
+                                    .replaceAll('\\$\\{APP_NAME\\}', "${env.APP_NAME}-${env.TARGET_COLOR}")
+                                    .replaceAll('\\$\\{COLOR\\}', env.TARGET_COLOR)
+                                    .replaceAll('\\$\\{PROJECT_NAME\\}', env.PROJECT_NAME)
+                                    .replaceAll('\\$\\{ENV\\}', env.ENV)
+                                    .replaceAll('\\$\\{COMPONENT\\}', env.COMPONENT)
+                                    .replaceAll('\\$\\{REPLICAS\\}', env.REPLICAS)
+                                    .replaceAll('\\$\\{CONTAINER_PORT\\}', env.CONTAINER_PORT)
+                                    .replaceAll('\\$\\{SERVICE_PORT\\}', env.SERVICE_PORT)
+                                    .replaceAll('\\$\\{DOMAIN\\}', env.DOMAIN)
+                                    .replaceAll('\\$\\{DOCKER_IMAGE\\}', env.DOCKER_IMAGE)
+                                    .replaceAll('\\$\\{DOCKER_TAG\\}', env.DOCKER_TAG)
+                                    .replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
+                                    .replaceAll('\\$\\{CLUSTER_ISSUER\\}', env.CLUSTER_ISSUER)
+                                    .replaceAll('\\$\\{INTERNAL_IP_RANGE\\}', env.INTERNAL_IP_RANGE)
+                                writeFile file: "k8s/deployment-${env.TARGET_COLOR}.yaml", text: deploymentContent
 
-                            stash includes: 'k8s/**,Dockerfile', name: 'build-files'
+                                // Service 템플릿 처리 (블루/그린 공용)
+                                def serviceContent = readFile "ci-cd-templates/k8s/service-template.yaml"
+                                writeFile file: "k8s/service.yaml", text: serviceContent
+
+                                // Ingress 템플릿 처리
+                                def ingressContent = readFile "ci-cd-templates/k8s/ingress-template.yaml"
+                                writeFile file: "k8s/ingress.yaml", text: ingressContent
+
+                                stash includes: 'k8s/**,Dockerfile', name: 'build-files'
+                            }
                         }
                     }
                 }
@@ -107,6 +142,7 @@ pipeline {
                         container('kubectl') {
                             unstash 'build-files'
                             script {
+                                // 네임스페이스 체크 및 생성
                                 def namespaceExists = sh(
                                     script: "kubectl get namespace ${env.K8S_NAMESPACE}",
                                     returnStatus: true
@@ -119,18 +155,21 @@ pipeline {
                                     echo "Namespace already exists. Skipping creation."
                                 }
 
-                                def deploymentExists = sh(
-                                    script: "kubectl get deployment ${env.APP_NAME} -n ${env.K8S_NAMESPACE}",
+                                // Target 컬러의 deployment 존재 여부 확인
+                                def targetDeploymentExists = sh(
+                                    script: "kubectl get deployment ${env.APP_NAME}-${env.TARGET_COLOR} -n ${env.K8S_NAMESPACE}",
                                     returnStatus: true
                                 ) == 0
 
-                                if (!deploymentExists) {
-                                    echo "Deployment does not exist. Creating new Deployment..."
-                                    sh "kubectl apply -f k8s/deployment.yaml -n ${env.K8S_NAMESPACE}"
+                                if (!targetDeploymentExists) {
+                                    echo "Target Deployment does not exist. Creating new Deployment..."
+                                    sh "kubectl apply -f k8s/deployment-${env.TARGET_COLOR}.yaml -n ${env.K8S_NAMESPACE}"
                                 } else {
-                                    echo "Deployment already exists. Skipping creation."
+                                    echo "Target Deployment exists. Updating..."
+                                    sh "kubectl apply -f k8s/deployment-${env.TARGET_COLOR}.yaml -n ${env.K8S_NAMESPACE}"
                                 }
 
+                                // Service는 처음 한번만 생성되고, 이후에는 selector만 변경됨
                                 def serviceExists = sh(
                                     script: "kubectl get service ${env.APP_NAME} -n ${env.K8S_NAMESPACE}",
                                     returnStatus: true
@@ -138,23 +177,32 @@ pipeline {
 
                                 if (!serviceExists) {
                                     echo "Service does not exist. Creating new Service..."
-                                    sh "kubectl apply -f k8s/service.yaml -n ${env.K8S_NAMESPACE}"
-                                } else {
-                                    echo "Service already exists. Skipping creation."
+                                    // 초기 서비스 생성 시 Target 컬러를 selector로 지정
+                                    def serviceContent = readFile "k8s/service.yaml"
+                                    serviceContent = serviceContent
+                                        .replaceAll('\\$\\{APP_NAME\\}', env.APP_NAME)
+                                        .replaceAll('\\$\\{PROJECT_NAME\\}', env.PROJECT_NAME)
+                                        .replaceAll('\\$\\{ENV\\}', env.ENV)
+                                        .replaceAll('\\$\\{COMPONENT\\}', env.COMPONENT)
+                                        .replaceAll('\\$\\{COLOR\\}', env.TARGET_COLOR)
+                                        .replaceAll('\\$\\{CONTAINER_PORT\\}', env.CONTAINER_PORT)
+                                        .replaceAll('\\$\\{SERVICE_PORT\\}', env.SERVICE_PORT)
+                                    writeFile file: "k8s/service-processed.yaml", text: serviceContent
+                                    sh "kubectl apply -f k8s/service-processed.yaml -n ${env.K8S_NAMESPACE}"
                                 }
 
+                                // Ingress 처리
                                 def ingressExists = sh(
                                     script: "kubectl get ingress ${env.APP_NAME} -n ${env.K8S_NAMESPACE}",
                                     returnStatus: true
                                 ) == 0
 
-                                echo "Ingress exists status: ${ingressExists}"
-
                                 if (!ingressExists) {
                                     echo "Ingress does not exist. Creating new Ingress..."
                                     sh "kubectl apply -f k8s/ingress.yaml -n ${env.K8S_NAMESPACE}"
                                 } else {
-                                    echo "Ingress already exists. Skipping creation."
+                                    echo "Ingress exists. Updating if needed..."
+                                    sh "kubectl apply -f k8s/ingress.yaml -n ${env.K8S_NAMESPACE}"
                                 }
                             }
                         }
@@ -206,42 +254,53 @@ pipeline {
                     }
                 }
 
-                stage('K8S 배포') {
+                stage('Target 환경 배포') {
                     steps {
                         container('kubectl') {
                             script {
-                                echo "K8S_NAMESPACE: ${env.K8S_NAMESPACE}"
-                                echo "DEPLOYMENT_NAME: ${env.APP_NAME}"
-                                def previousVersion
-                                try {
-                                    previousVersion = sh(
-                                            script: "kubectl get deployment ${env.APP_NAME} -n ${env.K8S_NAMESPACE} -o=jsonpath='{.spec.template.spec.containers[0].image}'",
-                                            returnStdout: true
-                                    ).trim()
-                                    echo "Previous version: ${previousVersion}"
-                                } catch (Exception e) {
-                                    echo "Error details: ${e.getMessage()}"
-                                    echo "Failed to get previous version. This might be the first deployment."
-                                    previousVersion = "${env.DOCKER_IMAGE}:latest"
-                                }
+                                // Target 컬러 배포
+                                sh """
+                                    kubectl apply -f k8s/deployment-${env.TARGET_COLOR}.yaml -n ${env.K8S_NAMESPACE}
+                                    kubectl rollout status deployment/${env.APP_NAME}-${env.TARGET_COLOR} -n ${env.K8S_NAMESPACE} --timeout=180s
+                                """
+                            }
+                        }
+                    }
+                }
 
-                                sh """sed -i 's|image: .*|image: ${env.DOCKER_IMAGE}:${env.DOCKER_TAG}|' k8s/deployment.yaml"""
+                stage('배포 전환 승인') {
+                    steps {
+                        script {
+                            env.SWITCH_APPROVED = input message: 'Target 환경으로 전환하시겠습니까?',
+                                parameters: [
+                                    choice(name: 'SWITCH_TRAFFIC', choices: ['yes', 'no'], description: '트래픽을 Target 환경으로 전환')
+                                ]
+                        }
+                    }
+                }
 
-                                try {
-                                    sh "kubectl apply -f k8s/deployment.yaml -n ${env.K8S_NAMESPACE}"
-                                    sh "kubectl apply -f k8s/service.yaml -n ${env.K8S_NAMESPACE}"
-                                    sh "kubectl apply -f k8s/ingress.yaml -n ${env.K8S_NAMESPACE}"
-                                    sh "kubectl rollout status deployment/${env.APP_NAME} -n ${env.K8S_NAMESPACE} --timeout=180s"
-                                } catch (Exception e) {
-                                    echo "Deployment failed: ${e.message}"
-                                    if (previousVersion) {
-                                        echo "Rolling back to ${previousVersion}"
-                                        sh "kubectl set image deployment/${env.APP_NAME} ${env.APP_NAME}=${previousVersion} -n ${env.K8S_NAMESPACE}"
-                                        sh "kubectl rollout status deployment/${env.APP_NAME} -n ${env.K8S_NAMESPACE} --timeout=180s"
-                                    } else {
-                                        echo "No previous version available for rollback"
+                stage('트래픽 전환') {
+                    when {
+                        environment name: 'SWITCH_APPROVED', value: 'yes'
+                    }
+                    steps {
+                        container('kubectl') {
+                            script {
+                                // 서비스 레이블 업데이트로 트래픽 전환
+                                sh """
+                                    kubectl patch service ${env.APP_NAME} -n ${env.K8S_NAMESPACE} -p '{"metadata":{"labels":{"color":"${env.TARGET_COLOR}"}},"spec":{"selector":{"color":"${env.TARGET_COLOR}"}}}'
+                                """
+
+                                // 이전 버전 제거 전 확인
+                                if (env.ACTIVE_COLOR != "none") {
+                                    def DELETE_OLD = input message: '이전 버전을 제거하시겠습니까?',
+                                        parameters: [
+                                            choice(name: 'DELETE_OLD_VERSION', choices: ['yes', 'no'], description: '이전 버전 제거')
+                                        ]
+
+                                    if (DELETE_OLD == 'yes') {
+                                        sh "kubectl delete deployment ${env.APP_NAME}-${env.ACTIVE_COLOR} -n ${env.K8S_NAMESPACE}"
                                     }
-                                    error "Deployment failed, check logs for details"
                                 }
                             }
                         }
