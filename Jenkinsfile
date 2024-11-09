@@ -33,11 +33,11 @@ pipeline {
             steps {
                 stash name: 'source', includes: '**'
 
-                script {
-                    def podTemplateContent = readFile "k8s/jenkins-pod-template.yaml"
-                    podTemplateContent = podTemplateContent.replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
-                    env.POD_TEMPLATE_CONTENT = podTemplateContent
-                }
+//                 script {
+//                     def podTemplateContent = readFile "k8s/jenkins-pod-template.yaml"
+//                     podTemplateContent = podTemplateContent.replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
+//                     env.POD_TEMPLATE_CONTENT = podTemplateContent
+//                 }
             }
         }
 
