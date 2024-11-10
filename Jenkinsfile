@@ -57,8 +57,9 @@ pipeline {
                     steps {
                         container('kubectl') {
                             script {
-                                def activeColor = "none"
-                                def targetColor = "blue"
+                                // 임시 변수 선언
+                                def activeColor
+                                def targetColor
 
                                 try {
                                     def activeService = sh(
@@ -68,26 +69,25 @@ pipeline {
 
                                     if (activeService == null || activeService.isEmpty() || activeService == "null") {
                                         echo "서비스가 없거나 color 라벨이 없습니다. 초기 배포로 진행합니다."
+                                        activeColor = "none"
+                                        targetColor = "blue"
                                     } else {
                                         activeColor = activeService
                                         targetColor = activeColor == "blue" ? "green" : "blue"
                                     }
-
                                 } catch (Exception e) {
                                     echo "서비스 확인 중 오류가 발생했습니다. 초기 배포로 진행합니다."
+                                    activeColor = "none"
+                                    targetColor = "blue"
                                 }
 
-                                withEnv([
-                                    "ACTIVE_COLOR=${activeColor}",
-                                    "TARGET_COLOR=${targetColor}"
-                                ]) {
-                                    echo "현재 Active 컬러: ${env.ACTIVE_COLOR}"
-                                    echo "배포 Target 컬러: ${env.TARGET_COLOR}"
+                                // 환경 변수 설정을 스크립트 레벨에서 수행
+                                env.setProperty('ACTIVE_COLOR', activeColor)
+                                env.setProperty('TARGET_COLOR', targetColor)
 
-                                    // 이후 스테이지에서 사용하기 위해 전역 환경변수로 설정
-                                    env.ACTIVE_COLOR = activeColor
-                                    env.TARGET_COLOR = targetColor
-                                }
+                                // 확인을 위한 출력
+                                echo "현재 Active 컬러: ${env.ACTIVE_COLOR}"
+                                echo "배포 Target 컬러: ${env.TARGET_COLOR}"
                             }
                         }
                     }
@@ -118,32 +118,44 @@ pipeline {
                                 sh "cp ci-cd-templates/Dockerfile-${env.APP_TYPE} Dockerfile"
                                 sh "mkdir -p k8s"
 
+                                // 공통 변수 맵 정의
+                                def variables = [
+                                    'APP_NAME': env.APP_NAME ?: '',
+                                    'COLOR': env.TARGET_COLOR ?: 'blue',
+                                    'PROJECT_NAME': env.PROJECT_NAME ?: '',
+                                    'ENV': env.ENV ?: '',
+                                    'COMPONENT': env.COMPONENT ?: '',
+                                    'REPLICAS': env.REPLICAS ?: '1',
+                                    'CONTAINER_PORT': env.CONTAINER_PORT ?: '',
+                                    'SERVICE_PORT': env.SERVICE_PORT ?: '80',
+                                    'DOMAIN': env.DOMAIN ?: '',
+                                    'DOCKER_IMAGE': env.DOCKER_IMAGE ?: '',
+                                    'DOCKER_TAG': env.DOCKER_TAG ?: 'latest',
+                                    'NODE_ARCH': env.NODE_ARCH ?: 'amd64',
+                                    'CLUSTER_ISSUER': env.CLUSTER_ISSUER ?: '',
+                                    'INTERNAL_IP_RANGE': env.INTERNAL_IP_RANGE ?: '0.0.0.0/0'
+                                ]
+
                                 // Target 컬러용 Deployment 템플릿 처리
                                 def deploymentContent = readFile "ci-cd-templates/k8s/deployment-template.yaml"
-                                deploymentContent = deploymentContent
-                                    .replaceAll('\\$\\{APP_NAME\\}', "${env.APP_NAME}-${env.TARGET_COLOR}")
-                                    .replaceAll('\\$\\{COLOR\\}', env.TARGET_COLOR)
-                                    .replaceAll('\\$\\{PROJECT_NAME\\}', env.PROJECT_NAME)
-                                    .replaceAll('\\$\\{ENV\\}', env.ENV)
-                                    .replaceAll('\\$\\{COMPONENT\\}', env.COMPONENT)
-                                    .replaceAll('\\$\\{REPLICAS\\}', env.REPLICAS)
-                                    .replaceAll('\\$\\{CONTAINER_PORT\\}', env.CONTAINER_PORT)
-                                    .replaceAll('\\$\\{SERVICE_PORT\\}', env.SERVICE_PORT)
-                                    .replaceAll('\\$\\{DOMAIN\\}', env.DOMAIN)
-                                    .replaceAll('\\$\\{DOCKER_IMAGE\\}', env.DOCKER_IMAGE)
-                                    .replaceAll('\\$\\{DOCKER_TAG\\}', env.DOCKER_TAG)
-                                    .replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
-                                    .replaceAll('\\$\\{CLUSTER_ISSUER\\}', env.CLUSTER_ISSUER)
-                                    .replaceAll('\\$\\{INTERNAL_IP_RANGE\\}', env.INTERNAL_IP_RANGE)
+                                variables.each { key, value ->
+                                    deploymentContent = deploymentContent.replaceAll(/\$\{${key}\}/, value)
+                                }
                                 writeFile file: "k8s/deployment-${env.TARGET_COLOR}.yaml", text: deploymentContent
 
-                                // Service 템플릿 처리 (블루/그린 공용)
+                                // Service 템플릿 처리
                                 def serviceContent = readFile "ci-cd-templates/k8s/service-template.yaml"
-                                writeFile file: "k8s/service.yaml", text: serviceContent
+                                variables.each { key, value ->
+                                    serviceContent = serviceContent.replaceAll(/\$\{${key}\}/, value)
+                                }
+                                writeFile file: "k8s/service-processed.yaml", text: serviceContent
 
                                 // Ingress 템플릿 처리
                                 def ingressContent = readFile "ci-cd-templates/k8s/ingress-template.yaml"
-                                writeFile file: "k8s/ingress.yaml", text: ingressContent
+                                variables.each { key, value ->
+                                    ingressContent = ingressContent.replaceAll(/\$\{${key}\}/, value)
+                                }
+                                writeFile file: "k8s/ingress-processed.yaml", text: ingressContent
 
                                 stash includes: 'k8s/**,Dockerfile', name: 'build-files'
                             }
@@ -191,17 +203,6 @@ pipeline {
 
                                 if (!serviceExists) {
                                     echo "Service does not exist. Creating new Service..."
-                                    // 초기 서비스 생성 시 Target 컬러를 selector로 지정
-                                    def serviceContent = readFile "k8s/service.yaml"
-                                    serviceContent = serviceContent
-                                        .replaceAll('\\$\\{APP_NAME\\}', env.APP_NAME)
-                                        .replaceAll('\\$\\{PROJECT_NAME\\}', env.PROJECT_NAME)
-                                        .replaceAll('\\$\\{ENV\\}', env.ENV)
-                                        .replaceAll('\\$\\{COMPONENT\\}', env.COMPONENT)
-                                        .replaceAll('\\$\\{COLOR\\}', env.TARGET_COLOR)
-                                        .replaceAll('\\$\\{CONTAINER_PORT\\}', env.CONTAINER_PORT)
-                                        .replaceAll('\\$\\{SERVICE_PORT\\}', env.SERVICE_PORT)
-                                    writeFile file: "k8s/service-processed.yaml", text: serviceContent
                                     sh "kubectl apply -f k8s/service-processed.yaml -n ${env.K8S_NAMESPACE}"
                                 }
 
@@ -213,10 +214,10 @@ pipeline {
 
                                 if (!ingressExists) {
                                     echo "Ingress does not exist. Creating new Ingress..."
-                                    sh "kubectl apply -f k8s/ingress.yaml -n ${env.K8S_NAMESPACE}"
+                                    sh "kubectl apply -f k8s/ingress-processed.yaml -n ${env.K8S_NAMESPACE}"
                                 } else {
                                     echo "Ingress exists. Updating if needed..."
-                                    sh "kubectl apply -f k8s/ingress.yaml -n ${env.K8S_NAMESPACE}"
+                                    sh "kubectl apply -f k8s/ingress-processed.yaml -n ${env.K8S_NAMESPACE}"
                                 }
                             }
                         }
