@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ${APP_NAME}
+  name: ${APP_NAME}-${COLOR}  # 컬러별로 구분되는 이름
   namespace: ${PROJECT_NAME}-${ENV}
   labels:
     app.kubernetes.io/name: ${APP_NAME}
@@ -21,7 +21,7 @@ spec:
       app.kubernetes.io/component: ${COMPONENT}
       app.kubernetes.io/part-of: ${PROJECT_NAME}
       env: ${ENV}
-      color: ${COLOR}
+      color: ${COLOR}  # 컬러별 selector
   template:
     metadata:
       labels:
