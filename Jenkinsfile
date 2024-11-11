@@ -203,6 +203,9 @@ pipeline {
                         container('kubectl') {
                             unstash 'build-files'
                             script {
+                                // TARGET_COLOR가 제대로 설정되었는지 확인
+                                echo "현재 Target 컬러: ${env.TARGET_COLOR}"
+
                                 // 네임스페이스 체크 및 생성
                                 def namespaceExists = sh(
                                     script: "kubectl get namespace ${env.K8S_NAMESPACE}",
@@ -225,6 +228,7 @@ pipeline {
 
                                 // 최초 배포시에만 Service와 Ingress 생성
                                 if (env.ACTIVE_COLOR == "none") {
+                                    echo "최초 배포 - Service와 Ingress 생성"
                                     sh """
                                         kubectl apply -f k8s/service-processed.yaml -n ${env.K8S_NAMESPACE}
                                         kubectl apply -f k8s/ingress-processed.yaml -n ${env.K8S_NAMESPACE}
