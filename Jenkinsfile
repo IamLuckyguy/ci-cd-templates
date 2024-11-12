@@ -1,3 +1,6 @@
+def activeColor
+def targetColor
+
 pipeline {
     agent any
 
@@ -26,10 +29,6 @@ pipeline {
         NODE_ARCH = "${params.ENV == 'prod' ? 'amd64' : 'arm64'}" // prod 환경일 때는 amd64, dev 환경일 때는 arm64
         CLUSTER_ISSUER = "${params.ENV == 'prod' ? 'letsencrypt-prod' : 'letsencrypt-staging'}" // prod 환경일 때는 letsencrypt-prod, 그 외 환경일 때는 letsencrypt-staging
         INTERNAL_IP_RANGE = "${params.ENV == 'prod' ? '0.0.0.0/0' : '192.168.100.0/24'}" // prod 환경이 아닌 경우 지정된 IP 대역만 접근 가능
-
-        // 블루-그린 배포를 위한 추가 환경 변수
-        ACTIVE_COLOR = ""
-        TARGET_COLOR = ""
     }
 
     stages {
@@ -64,18 +63,18 @@ pipeline {
                                     ).trim()
 
                                     if (activeService == null || activeService.isEmpty() || activeService == "null") {
-                                        env.ACTIVE_COLOR = "none"
-                                        env.TARGET_COLOR = "blue"
+                                        activeColor = "none"
+                                        targetColor = "blue"
                                     } else {
-                                        env.ACTIVE_COLOR = activeService
-                                        env.TARGET_COLOR = (env.ACTIVE_COLOR == "blue") ? "green" : "blue"
+                                        activeColor = activeService
+                                        targetColor = (activeColor == "blue") ? "green" : "blue"
                                     }
 
-                                    echo "현재 Active 컬러: ${env.ACTIVE_COLOR}"
-                                    echo "배포 Target 컬러: ${env.TARGET_COLOR}"
+                                    echo "현재 Active 컬러: ${activeColor}"
+                                    echo "배포 Target 컬러: ${targetColor}"
                                 } catch (Exception e) {
-                                    env.ACTIVE_COLOR = "none"
-                                    env.TARGET_COLOR = "blue"
+                                    activeColor = "none"
+                                    targetColor = "blue"
                                     echo "서비스 확인 실패. 초기 배포로 진행합니다."
                                 }
                             }
@@ -111,7 +110,7 @@ pipeline {
                                 // 공통 변수 맵 정의
                                 def variables = [
                                     'APP_NAME': env.APP_NAME ?: '',
-                                    'COLOR': env.TARGET_COLOR ?: 'blue',
+                                    'COLOR': targetColor ?: 'blue',
                                     'PROJECT_NAME': env.PROJECT_NAME ?: '',
                                     'ENV': env.ENV ?: '',
                                     'COMPONENT': env.COMPONENT ?: '',
@@ -131,7 +130,7 @@ pipeline {
                                 variables.each { key, value ->
                                     deploymentContent = deploymentContent.replaceAll(/\$\{${key}\}/, value)
                                 }
-                                writeFile file: "k8s/deployment-${env.TARGET_COLOR}.yaml", text: deploymentContent
+                                writeFile file: "k8s/deployment-${targetColor}.yaml", text: deploymentContent
 
                                 // Service 템플릿 처리
                                 def serviceContent = readFile "ci-cd-templates/k8s/service-template.yaml"
@@ -204,7 +203,7 @@ pipeline {
                             unstash 'build-files'
                             script {
                                 // TARGET_COLOR가 제대로 설정되었는지 확인
-                                echo "현재 Target 컬러: ${env.TARGET_COLOR}"
+                                echo "현재 Target 컬러: ${targetColor}"
 
                                 // 네임스페이스 체크 및 생성
                                 def namespaceExists = sh(
@@ -218,16 +217,16 @@ pipeline {
 
                                 // 1. Target 컬러의 새로운 Deployment 생성/업데이트
                                 sh """
-                                    kubectl apply -f k8s/deployment-${env.TARGET_COLOR}.yaml -n ${env.K8S_NAMESPACE}
+                                    kubectl apply -f k8s/deployment-${targetColor}.yaml -n ${env.K8S_NAMESPACE}
                                 """
 
                                 // 2. Target 배포가 완전히 준비될 때까지 대기
                                 sh """
-                                    kubectl rollout status deployment/${env.APP_NAME}-${env.TARGET_COLOR} -n ${env.K8S_NAMESPACE} --timeout=180s
+                                    kubectl rollout status deployment/${env.APP_NAME}-${targetColor} -n ${env.K8S_NAMESPACE} --timeout=180s
                                 """
 
                                 // 최초 배포시에만 Service와 Ingress 생성
-                                if (env.ACTIVE_COLOR == "none") {
+                                if (activeColor == "none") {
                                     echo "최초 배포 - Service와 Ingress 생성"
                                     sh """
                                         kubectl apply -f k8s/service-processed.yaml -n ${env.K8S_NAMESPACE}
@@ -259,18 +258,18 @@ pipeline {
                             script {
                                 // 3. 서비스 selector 업데이트로 트래픽 전환
                                 sh """
-                                    kubectl patch service ${env.APP_NAME} -n ${env.K8S_NAMESPACE} -p '{"metadata":{"labels":{"color":"${env.TARGET_COLOR}"}},"spec":{"selector":{"color":"${env.TARGET_COLOR}"}}}'
+                                    kubectl patch service ${env.APP_NAME} -n ${env.K8S_NAMESPACE} -p '{"metadata":{"labels":{"color":"${targetColor}"}},"spec":{"selector":{"color":"${targetColor}"}}}'
                                 """
 
                                 // 이전 버전 제거 여부 확인
-                                if (env.ACTIVE_COLOR != "none") {
+                                if (activeColor != "none") {
                                     def DELETE_OLD = input message: '이전 버전을 제거하시겠습니까?',
                                         parameters: [
                                             choice(name: 'DELETE_OLD_VERSION', choices: ['yes', 'no'], description: '이전 버전 제거 여부')
                                         ]
 
                                     if (DELETE_OLD == 'yes') {
-                                        sh "kubectl delete deployment ${env.APP_NAME}-${env.ACTIVE_COLOR} -n ${env.K8S_NAMESPACE}"
+                                        sh "kubectl delete deployment ${env.APP_NAME}-${activeColor} -n ${env.K8S_NAMESPACE}"
                                     }
                                 }
                             }
