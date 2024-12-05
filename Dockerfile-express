@@ -28,7 +28,7 @@ RUN npm install --only=production
 
 # Copy all necessary files from builder
 COPY --from=builder /app/src ./src
-COPY --from=builder /app/index.js .
+COPY --from=builder /app/src/index.js ./src/index.js
 
 # Create directory for logs
 RUN mkdir -p /app/logs && \
