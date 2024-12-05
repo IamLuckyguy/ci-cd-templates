@@ -88,7 +88,10 @@ pipeline {
                             checkout([
                                 $class: 'GitSCM',
                                 branches: [[name: "${env.BRANCH}"]],
-                                userRemoteConfigs: [[url: "${env.APP_REPO}"]]
+                                userRemoteConfigs: [[
+                                    url: "${env.APP_REPO}",
+                                    credentialsId: 'github-access'
+                                ]]
                             ])
                         }
                     }
