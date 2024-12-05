@@ -9,9 +9,9 @@ ENV NODE_ENV=${NODE_ENV}
 
 # Install dependencies
 COPY package*.json ./
-RUN npm install    # npm ci 대신 npm install 사용
+RUN npm install
 
-# Copy source
+# Copy all source files
 COPY . .
 
 # Production stage
@@ -24,15 +24,10 @@ ENV PATH /app/node_modules/.bin:$PATH
 
 # Copy package files and install production dependencies
 COPY package*.json ./
-RUN npm install --only=production    # npm ci 대신 npm install 사용
+RUN npm install --only=production
 
-# Copy necessary files from builder
-COPY --from=builder /app/config ./config
-COPY --from=builder /app/middleware ./middleware
-COPY --from=builder /app/models ./models
-COPY --from=builder /app/routes ./routes
-COPY --from=builder /app/services ./services
-COPY --from=builder /app/utils ./utils
+# Copy all necessary files from builder
+COPY --from=builder /app/src ./src
 COPY --from=builder /app/index.js .
 
 # Create directory for logs
