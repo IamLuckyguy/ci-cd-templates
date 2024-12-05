@@ -1,3 +1,4 @@
+# Dockerfile-nextjs
 ARG PLATFORM=linux/amd64
 
 # Build stage
@@ -19,9 +20,6 @@ WORKDIR /app
 ARG NODE_ENV=dev
 ENV NODE_ENV=${NODE_ENV}
 ENV PATH /app/node_modules/.bin:$PATH
-
-# Add global installation of next.js
-#RUN npm install -g next
 
 COPY package*.json ./
 RUN npm ci --only=production

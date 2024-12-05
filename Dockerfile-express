@@ -1,0 +1,47 @@
+# Dockerfile-express
+ARG PLATFORM=linux/amd64
+
+# Build stage
+FROM --platform=${PLATFORM} node:22.10.0-alpine AS builder
+WORKDIR /app
+
+ARG NODE_ENV=dev
+ENV NODE_ENV=${NODE_ENV}
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci --include=dev
+
+# Copy source
+COPY . .
+
+# Production stage
+FROM --platform=${PLATFORM} node:22.10.0-alpine AS runner
+WORKDIR /app
+
+ARG NODE_ENV=dev
+ENV NODE_ENV=${NODE_ENV}
+ENV PATH /app/node_modules/.bin:$PATH
+
+# Copy package files and install production dependencies
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy necessary files from builder
+COPY --from=builder /app/config ./config
+COPY --from=builder /app/middleware ./middleware
+COPY --from=builder /app/models ./models
+COPY --from=builder /app/routes ./routes
+COPY --from=builder /app/services ./services
+COPY --from=builder /app/utils ./utils
+COPY --from=builder /app/index.js .
+
+# Create directory for logs
+RUN mkdir -p /app/logs && \
+    chown -R node:node /app/logs
+
+# Switch to non-root user
+USER node
+
+EXPOSE 3000
+CMD ["node", "index.js"]

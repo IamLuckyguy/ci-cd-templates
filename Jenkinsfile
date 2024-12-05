@@ -6,7 +6,7 @@ pipeline {
 
     environment {
         // Jenkins 로 부터 전달 받은 파라미터, 환경 변수를 사용하기 위한 선언
-        APP_TYPE = "${params.APP_TYPE}" // nodejs, spring, ...
+        APP_TYPE = "${params.APP_TYPE}" // nextjs, spring, express, ...
         COMPONENT = "${params.COMPONENT}" // frontend, backend
         ENV = "${params.ENV}" // dev, prod, ..
         REPLICAS = "${params.REPLICAS}" // 리플리카 수
@@ -105,6 +105,8 @@ pipeline {
                                 }
 
                                 sh "cp ci-cd-templates/Dockerfile-${env.APP_TYPE} Dockerfile"
+                                sh "cp ci-cd-templates/.dockerignore .dockerignore"
+
                                 sh "mkdir -p k8s"
 
                                 // 공통 변수 맵 정의
@@ -168,7 +170,7 @@ pipeline {
                                     def buildArgs1 = ""
                                     def buildArgs2 = ""
 
-                                    if (env.APP_TYPE == 'nodejs') {
+                                    if (env.APP_TYPE == 'nextjs' || env.APP_TYPE == 'express') {
                                         buildArgs1 = "--build-arg NODE_ENV=${env.ENV}"
                                     } else if (env.APP_TYPE == 'spring') {
                                         buildArgs1 = "--build-arg SPRING_PROFILES_ACTIVE=${env.ENV}"
@@ -213,6 +215,35 @@ pipeline {
 
                                 if (!namespaceExists) {
                                     sh "kubectl create namespace ${env.K8S_NAMESPACE}"
+                                }
+
+                                // kms 일 경우에만 환경변수 파일 로드 및 시크릿 생성
+                                if (env.APP_NAME == 'kms') {
+                                    // 환경 변수 파일 로드 및 시크릿 생성
+                                    def envFile = ".env.${env.ENV}"
+                                    def envContent = readFile(envFile)
+                                    def envMap = [:]
+
+                                    envContent.split('\n').each { line ->
+                                        if (line && !line.startsWith('#')) {
+                                            def parts = line.split('=', 2)
+                                            if (parts.size() == 2) {
+                                                envMap[parts[0].trim()] = parts[1].trim()
+                                            }
+                                        }
+                                    }
+
+                                    // 시크릿 템플릿 처리
+                                    def secretContent = readFile "k8s/secret-template.yaml"
+                                    envMap.each { key, value ->
+                                        secretContent = secretContent.replaceAll(/\$\{${key}\}/, value)
+                                    }
+                                    writeFile file: "k8s/secret-processed.yaml", text: secretContent
+
+                                    // 시크릿 생성/업데이트
+                                    sh """
+                                        kubectl apply -f k8s/secret-processed.yaml -n ${env.K8S_NAMESPACE}
+                                    """
                                 }
 
                                 // 1. Target 컬러의 새로운 Deployment 생성/업데이트

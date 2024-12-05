@@ -1,0 +1,30 @@
+# .dockerignore
+# Node
+node_modules
+npm-debug.log
+
+# Environment
+.env
+.env.*
+*.env
+
+# Dev tools
+.git
+.gitignore
+.dockerignore
+Dockerfile*
+docker-compose*
+
+# Logs
+logs
+*.log
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Test
+coverage
+.nyc_output

@@ -1,3 +1,4 @@
+# deployment-template.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -39,6 +40,9 @@ spec:
           image: ${DOCKER_IMAGE}:${DOCKER_TAG}
           ports:
             - containerPort: ${CONTAINER_PORT}
+          envFrom:
+            - secretRef:
+                name: ${APP_NAME}-secrets
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
