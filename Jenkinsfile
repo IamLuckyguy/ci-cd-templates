@@ -130,6 +130,21 @@ pipeline {
                                     'INTERNAL_IP_RANGE': env.INTERNAL_IP_RANGE ?: '0.0.0.0/0'
                                 ]
 
+                                // kms 애플리케이션의 경우 환경 변수 파일에서 추가 변수 로드
+                                if (env.APP_NAME == 'kms') {
+                                    def envFile = ".env.${env.ENV}"
+                                    def envContent = readFile(envFile)
+
+                                    envContent.split('\n').each { line ->
+                                        if (line && !line.startsWith('#')) {
+                                            def parts = line.split('=', 2)
+                                            if (parts.size() == 2) {
+                                                variables[parts[0].trim()] = parts[1].trim()
+                                            }
+                                        }
+                                    }
+                                }
+
                                 // Target 컬러용 Deployment 템플릿 처리
                                 def deploymentContent = readFile "ci-cd-templates/k8s/deployment-template.yaml"
                                 variables.each { key, value ->
@@ -150,6 +165,15 @@ pipeline {
                                     ingressContent = ingressContent.replaceAll(/\$\{${key}\}/, value)
                                 }
                                 writeFile file: "k8s/ingress-processed.yaml", text: ingressContent
+
+                                // Secret 템플릿 처리 (kms 애플리케이션인 경우에만)
+                                if (env.APP_NAME == 'kms') {
+                                    def secretContent = readFile "ci-cd-templates/k8s/secret-template.yaml"
+                                    variables.each { key, value ->
+                                        secretContent = secretContent.replaceAll(/\$\{${key}\}/, value)
+                                    }
+                                    writeFile file: "k8s/secret-processed.yaml", text: secretContent
+                                }
 
                                 stash includes: 'k8s/**,Dockerfile', name: 'build-files'
                             }
@@ -220,35 +244,6 @@ pipeline {
                                     sh "kubectl create namespace ${env.K8S_NAMESPACE}"
                                 }
 
-                                // kms 일 경우에만 환경변수 파일 로드 및 시크릿 생성
-                                if (env.APP_NAME == 'kms') {
-                                    // 환경 변수 파일 로드 및 시크릿 생성
-                                    def envFile = ".env.${env.ENV}"
-                                    def envContent = readFile(envFile)
-                                    def envMap = [:]
-
-                                    envContent.split('\n').each { line ->
-                                        if (line && !line.startsWith('#')) {
-                                            def parts = line.split('=', 2)
-                                            if (parts.size() == 2) {
-                                                envMap[parts[0].trim()] = parts[1].trim()
-                                            }
-                                        }
-                                    }
-
-                                    // 시크릿 템플릿 처리
-                                    def secretContent = readFile "k8s/secret-template.yaml"
-                                    envMap.each { key, value ->
-                                        secretContent = secretContent.replaceAll(/\$\{${key}\}/, value)
-                                    }
-                                    writeFile file: "k8s/secret-processed.yaml", text: secretContent
-
-                                    // 시크릿 생성/업데이트
-                                    sh """
-                                        kubectl apply -f k8s/secret-processed.yaml -n ${env.K8S_NAMESPACE}
-                                    """
-                                }
-
                                 // 1. Target 컬러의 새로운 Deployment 생성/업데이트
                                 sh """
                                     kubectl apply -f k8s/deployment-${targetColor}.yaml -n ${env.K8S_NAMESPACE}
@@ -265,6 +260,13 @@ pipeline {
                                     sh """
                                         kubectl apply -f k8s/service-processed.yaml -n ${env.K8S_NAMESPACE}
                                         kubectl apply -f k8s/ingress-processed.yaml -n ${env.K8S_NAMESPACE}
+                                    """
+                                }
+
+                                // secret 생성
+                                if (env.APP_NAME == 'kms') {
+                                    sh """
+                                        kubectl apply -f k8s/secret-processed.yaml -n ${env.K8S_NAMESPACE}
                                     """
                                 }
                             }
