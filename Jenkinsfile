@@ -244,6 +244,13 @@ pipeline {
                                     sh "kubectl create namespace ${env.K8S_NAMESPACE}"
                                 }
 
+                                // 0. kms 일 경우 secret 생성 또는 업데이트
+                                if (env.APP_NAME == 'kms') {
+                                    sh """
+                                        kubectl apply -f k8s/secret-processed.yaml -n ${env.K8S_NAMESPACE}
+                                    """
+                                }
+
                                 // 1. Target 컬러의 새로운 Deployment 생성/업데이트
                                 sh """
                                     kubectl apply -f k8s/deployment-${targetColor}.yaml -n ${env.K8S_NAMESPACE}
@@ -260,13 +267,6 @@ pipeline {
                                     sh """
                                         kubectl apply -f k8s/service-processed.yaml -n ${env.K8S_NAMESPACE}
                                         kubectl apply -f k8s/ingress-processed.yaml -n ${env.K8S_NAMESPACE}
-                                    """
-                                }
-
-                                // secret 생성
-                                if (env.APP_NAME == 'kms') {
-                                    sh """
-                                        kubectl apply -f k8s/secret-processed.yaml -n ${env.K8S_NAMESPACE}
                                     """
                                 }
                             }
