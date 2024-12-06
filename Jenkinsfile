@@ -136,9 +136,9 @@ pipeline {
                                 // kms 애플리케이션의 경우 환경 변수 파일에서 추가 변수 로드
                                 if (env.APP_NAME == 'kms') {
                                     def secretsContent = """
-                                              envFrom:
-                                                - secretRef:
-                                                    name: ${env.APP_NAME}-secrets
+          envFrom:
+          - secretRef:
+              name: ${env.APP_NAME}-secrets
                                     """
 
                                     // containers 항목 찾아서 env 섹션 다음에 secrets 설정 추가
