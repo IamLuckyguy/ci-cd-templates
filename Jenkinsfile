@@ -141,11 +141,9 @@ pipeline {
                                                     name: ${env.APP_NAME}-secrets
                                     """
 
-                                    // containers 항목의 마지막에 secrets 설정 추가
-                                    deploymentContent = deploymentContent.replaceAll(
-                                        /(containers:.*?value: "Asia\/Seoul")/s,
-                                        "\$1\n${secretsContent}"
-                                    )
+                                    // containers 항목 찾아서 env 섹션 다음에 secrets 설정 추가
+                                    def pattern = ~/(?m)(.*- name: TZ\n.*value: "Asia\/Seoul")/
+                                    deploymentContent = deploymentContent.replaceAll(pattern, "\$1\n${secretsContent}")
 
                                     def envFile = ".env.${env.ENV}"
                                     def envContent = readFile(envFile)
