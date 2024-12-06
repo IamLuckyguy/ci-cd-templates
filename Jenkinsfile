@@ -130,8 +130,23 @@ pipeline {
                                     'INTERNAL_IP_RANGE': env.INTERNAL_IP_RANGE ?: '0.0.0.0/0'
                                 ]
 
+                                // Target 컬러용 Deployment 템플릿 처리
+                                def deploymentContent = readFile "ci-cd-templates/k8s/deployment-template.yaml"
+
                                 // kms 애플리케이션의 경우 환경 변수 파일에서 추가 변수 로드
                                 if (env.APP_NAME == 'kms') {
+                                    def secretsContent = """
+                                              envFrom:
+                                                - secretRef:
+                                                    name: ${env.APP_NAME}-secrets
+                                    """
+
+                                    // containers 항목의 마지막에 secrets 설정 추가
+                                    deploymentContent = deploymentContent.replaceAll(
+                                        /(containers:.*?value: "Asia\/Seoul")/s,
+                                        "\$1\n${secretsContent}"
+                                    )
+
                                     def envFile = ".env.${env.ENV}"
                                     def envContent = readFile(envFile)
 
@@ -145,11 +160,10 @@ pipeline {
                                     }
                                 }
 
-                                // Target 컬러용 Deployment 템플릿 처리
-                                def deploymentContent = readFile "ci-cd-templates/k8s/deployment-template.yaml"
                                 variables.each { key, value ->
                                     deploymentContent = deploymentContent.replaceAll(/\$\{${key}\}/, value)
                                 }
+
                                 writeFile file: "k8s/deployment-${targetColor}.yaml", text: deploymentContent
 
                                 // Service 템플릿 처리
