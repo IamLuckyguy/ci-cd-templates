@@ -27,6 +27,8 @@ spec:
       color: ${COLOR}  # 컬러별 selector
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
       labels:
         app.kubernetes.io/name: ${APP_NAME}
         app.kubernetes.io/instance: ${APP_NAME}-${ENV}
