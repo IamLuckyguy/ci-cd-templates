@@ -4,6 +4,8 @@ kind: Deployment
 metadata:
   name: ${APP_NAME}-${COLOR}  # 컬러별로 구분되는 이름
   namespace: ${PROJECT_NAME}-${ENV}
+  annotations:
+    prometheus.io/scrape: "true"
   labels:
     app.kubernetes.io/name: ${APP_NAME}
     app.kubernetes.io/instance: ${APP_NAME}-${ENV}
