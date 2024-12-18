@@ -39,6 +39,8 @@ spec:
         env: ${ENV}
         color: ${COLOR}
     spec:
+      imagePullSecrets:
+        - name: docker-reg-cred
       containers:
         - name: ${APP_NAME}
           image: ${DOCKER_IMAGE}:${DOCKER_TAG}

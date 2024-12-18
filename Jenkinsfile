@@ -26,9 +26,9 @@ pipeline {
         TEMPLATE_REPO = "${scm.userRemoteConfigs[0].url}" // CI/CD 템플릿 저장소 URL
         TEMPLATE_BRANCH = "${params.TEMPLATE_BRANCH}" // CI/CD 템플릿 저장소 브랜치
         APP_REPO = "${params.APP_REPO}" // 애플리케이션 저장소 URL
+        APP_CREDENTIALS = credentials(params.APP_REPO_CREDENTIALS_ID ?: 'github-access')
         NODE_ARCH = "${params.ENV == 'prod' ? 'amd64' : 'arm64'}" // prod 환경일 때는 amd64, dev 환경일 때는 arm64
         CLUSTER_ISSUER = "${params.ENV == 'prod' ? 'letsencrypt-prod' : 'letsencrypt-staging'}" // prod 환경일 때는 letsencrypt-prod, 그 외 환경일 때는 letsencrypt-staging
-        INTERNAL_IP_RANGE = "${params.ENV == 'prod' ? '0.0.0.0/0' : '192.168.100.0/24'}" // prod 환경이 아닌 경우 지정된 IP 대역만 접근 가능
     }
 
     stages {
@@ -90,7 +90,7 @@ pipeline {
                                 branches: [[name: "${env.BRANCH}"]],
                                 userRemoteConfigs: [[
                                     url: "${env.APP_REPO}",
-                                    credentialsId: 'github-access'
+                                    credentialsId: "${env.APP_CREDENTIALS}"
                                 ]]
                             ])
                         }
@@ -126,8 +126,7 @@ pipeline {
                                     'DOCKER_IMAGE': env.DOCKER_IMAGE ?: '',
                                     'DOCKER_TAG': env.DOCKER_TAG ?: 'latest',
                                     'NODE_ARCH': env.NODE_ARCH ?: 'amd64',
-                                    'CLUSTER_ISSUER': env.CLUSTER_ISSUER ?: '',
-                                    'INTERNAL_IP_RANGE': env.INTERNAL_IP_RANGE ?: '0.0.0.0/0'
+                                    'CLUSTER_ISSUER': env.CLUSTER_ISSUER ?: ''
                                 ]
 
                                 // Target 컬러용 Deployment 템플릿 처리
@@ -254,6 +253,20 @@ pipeline {
 
                                 if (!namespaceExists) {
                                     sh "kubectl create namespace ${env.K8S_NAMESPACE}"
+
+                                    // Docker Hub credentials secret 생성
+                                    withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials',
+                                                                    usernameVariable: 'DOCKER_USER',
+                                                                    passwordVariable: 'DOCKER_PASSWORD')]) {
+                                        sh """
+                                            kubectl create secret docker-registry docker-reg-cred \
+                                            --namespace=${env.K8S_NAMESPACE} \
+                                            --docker-server=https://index.docker.io/v1/ \
+                                            --docker-username="\${DOCKER_USER}" \
+                                            --docker-password="\${DOCKER_PASSWORD}" \
+                                            --docker-email=your-email@example.com
+                                        """
+                                    }
                                 }
 
                                 // 0. kms 일 경우 secret 생성 또는 업데이트
