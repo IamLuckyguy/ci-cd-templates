@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ${APP_NAME}
-  namespace: ${PROJECT_NAME}-${ENV}
+  namespace: ${K8S_NAMESPACE}
   annotations:
     kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: ${CLUSTER_ISSUER}

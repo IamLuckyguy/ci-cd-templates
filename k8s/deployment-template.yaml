@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ${APP_NAME}-${COLOR}  # 컬러별로 구분되는 이름
-  namespace: ${PROJECT_NAME}-${ENV}
+  namespace: ${K8S_NAMESPACE}
   annotations:
     prometheus.io/scrape: "true"
   labels:

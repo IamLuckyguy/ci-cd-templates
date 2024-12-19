@@ -118,6 +118,7 @@ pipeline {
                                     'COLOR': targetColor ?: 'blue',
                                     'PROJECT_NAME': env.PROJECT_NAME ?: '',
                                     'ENV': env.ENV ?: '',
+                                    'K8S_NAMESPACE': env.K8S_NAMESPACE ?: '',
                                     'COMPONENT': env.COMPONENT ?: '',
                                     'REPLICAS': env.REPLICAS ?: '1',
                                     'CONTAINER_PORT': env.CONTAINER_PORT ?: '',
