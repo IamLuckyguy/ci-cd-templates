@@ -245,7 +245,7 @@ pipeline {
                                 // TARGET_COLOR가 제대로 설정되었는지 확인
                                 echo "현재 Target 컬러: ${targetColor}"
 
-                                // 네임스페이스 체크 및 생성
+                                // 1. 네임스페이스 체크 및 생성
                                 def namespaceExists = sh(
                                     script: "kubectl get namespace ${env.K8S_NAMESPACE}",
                                     returnStatus: true
@@ -253,35 +253,43 @@ pipeline {
 
                                 if (!namespaceExists) {
                                     sh "kubectl create namespace ${env.K8S_NAMESPACE}"
+                                }
 
-                                    // Docker Hub credentials secret 생성
+                                // 2. Docker registry secret 존재 여부 확인
+                                def secretExists = sh(
+                                    script: "kubectl get secret docker-reg-cred -n ${env.K8S_NAMESPACE}",
+                                    returnStatus: true
+                                ) == 0
+
+                                // Secret이 없을 경우에만 생성
+                                if (!secretExists) {
+                                    echo "Creating docker-reg-cred secret in namespace ${env.K8S_NAMESPACE}"
                                     withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials',
                                                                     usernameVariable: 'DOCKER_USER',
                                                                     passwordVariable: 'DOCKER_PASSWORD')]) {
                                         sh """
                                             kubectl create secret docker-registry docker-reg-cred \
                                             --namespace=${env.K8S_NAMESPACE} \
-                                            --docker-server=https://index.docker.io/v1/ \
+                                            --docker-server=docker.io \
                                             --docker-username="\${DOCKER_USER}" \
-                                            --docker-password="\${DOCKER_PASSWORD}" \
-                                            --docker-email=your-email@example.com
+                                            --docker-password="\${DOCKER_PASSWORD}"
                                         """
                                     }
                                 }
 
-                                // 0. kms 일 경우 secret 생성 또는 업데이트
+                                // 2-1. kms 일 경우 secret 생성 또는 업데이트
                                 if (env.APP_NAME == 'kms') {
                                     sh """
                                         kubectl apply -f k8s/secret-processed.yaml -n ${env.K8S_NAMESPACE}
                                     """
                                 }
 
-                                // 1. Target 컬러의 새로운 Deployment 생성/업데이트
+                                // 3. Target 컬러의 새로운 Deployment 생성/업데이트
                                 sh """
                                     kubectl apply -f k8s/deployment-${targetColor}.yaml -n ${env.K8S_NAMESPACE}
                                 """
 
-                                // 2. Target 배포가 완전히 준비될 때까지 대기
+                                // 4. Target 배포가 완전히 준비될 때까지 대기
                                 sh """
                                     kubectl rollout status deployment/${env.APP_NAME}-${targetColor} -n ${env.K8S_NAMESPACE} --timeout=180s
                                 """
