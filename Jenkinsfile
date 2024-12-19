@@ -8,7 +8,7 @@ pipeline {
         // Jenkins 로 부터 전달 받은 파라미터, 환경 변수를 사용하기 위한 선언
         APP_TYPE = "${params.APP_TYPE}" // nextjs, spring, express, ...
         COMPONENT = "${params.COMPONENT}" // frontend, backend
-        ENV = "${params.ENV}" // dev, prod, ..
+        ENV = "${params.ENV}" // dev, prod, global
         REPLICAS = "${params.REPLICAS}" // 리플리카 수
         CONTAINER_PORT = "${params.CONTAINER_PORT}" // 컨테이너 포트 NODE 기본 포트 3000, SPRING 기본 포트 8080
         SERVICE_PORT = "80" // kubernetes service port는 80으로 고정
@@ -21,7 +21,7 @@ pipeline {
         IMAGE_TAG = "${params.IMAGE_TAG}" // Jenkins 에서 입력받은 이미지 태그, 없으면 latest/빌드 번호 사용. 이전 이미지 태그(빌드번호) 입력시 롤백 배포에 사용 가능
         DOCKER_TAG = "${params.IMAGE_TAG ?: env.BUILD_NUMBER}" // docker image tag
         DOCKER_USERNAME = "wondookong"
-        K8S_NAMESPACE = "${params.PROJECT_NAME}-${params.ENV}" // 네임스페이스가 없을 경우 생성하도록
+        K8S_NAMESPACE = params.ENV == 'global' ? params.PROJECT_NAME : "${params.PROJECT_NAME}-${params.ENV}" // 네임스페이스가 없을 경우 생성하도록
         DOCKER_IMAGE = "${DOCKER_USERNAME}/${K8S_NAMESPACE}-${params.APP_NAME}" // docker hub image 경로
         TEMPLATE_REPO = "${scm.userRemoteConfigs[0].url}" // CI/CD 템플릿 저장소 URL
         TEMPLATE_BRANCH = "${params.TEMPLATE_BRANCH}" // CI/CD 템플릿 저장소 브랜치
