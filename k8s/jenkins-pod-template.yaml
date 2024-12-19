@@ -18,7 +18,7 @@ spec:
           cpu: "500m"
         limits:
           memory: "2048Mi"
-          cpu: "2000m"
+          cpu: "1000m"
       volumeMounts:
         - name: shared-workspace
           mountPath: /home/jenkins/agent
@@ -37,7 +37,7 @@ spec:
           cpu: "500m"
         limits:
           memory: "2048Mi"
-          cpu: "2000m"
+          cpu: "1000m"
       volumeMounts:
         - name: docker-config
           mountPath: /kaniko/.docker
