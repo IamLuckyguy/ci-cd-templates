@@ -223,6 +223,7 @@ pipeline {
                                     }
 
                                     sh """
+                                        set -x
                                         /kaniko/executor \\
                                         --context `pwd` \\
                                         ${platform} \\
@@ -231,6 +232,7 @@ pipeline {
                                         --dockerfile `pwd`/Dockerfile \\
                                         ${buildArgs1} \\
                                         ${buildArgs2}
+                                        set +x
                                     """
                                 }
                             }
