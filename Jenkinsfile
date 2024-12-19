@@ -231,7 +231,8 @@ pipeline {
                                         --destination ${env.DOCKER_IMAGE}:latest \\
                                         --dockerfile `pwd`/Dockerfile \\
                                         ${buildArgs1} \\
-                                        ${buildArgs2}
+                                        ${buildArgs2} \\
+                                        --verbosity debug
                                         set +x
                                     """
                                 }
