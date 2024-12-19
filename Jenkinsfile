@@ -27,8 +27,8 @@ pipeline {
         TEMPLATE_BRANCH = "${params.TEMPLATE_BRANCH}" // CI/CD 템플릿 저장소 브랜치
         APP_REPO = "${params.APP_REPO}" // 애플리케이션 저장소 URL
         APP_CREDENTIALS = "${params.APP_REPO_CREDENTIALS_ID == null ? 'github-access' : params.APP_REPO_CREDENTIALS_ID}" // 애플리케이션 저장소 Token 등록 Credential
-        NODE_ARCH = "${params.ENV == 'prod' ? 'amd64' : 'arm64'}" // prod 환경일 때는 amd64, dev 환경일 때는 arm64
-        CLUSTER_ISSUER = "${params.ENV == 'prod' ? 'letsencrypt-prod' : 'letsencrypt-staging'}" // prod 환경일 때는 letsencrypt-prod, 그 외 환경일 때는 letsencrypt-staging
+        NODE_ARCH = "${(params.ENV == 'prod' || params.ENV == 'global') ? 'amd64' : 'arm64'}" // prod, global 환경일 때는 amd64, dev 환경일 때는 arm64
+        CLUSTER_ISSUER = "${(params.ENV == 'prod' || params.ENV == 'global') ? 'letsencrypt-prod' : 'letsencrypt-staging'}" // prod, global 환경일 때는 letsencrypt-prod, 그 외 환경일 때는 letsencrypt-staging
     }
 
     stages {
@@ -214,7 +214,7 @@ pipeline {
                                         buildArgs1 = "--build-arg SPRING_PROFILES_ACTIVE=${env.ENV}"
                                     }
 
-                                    if (env.ENV == 'prod') {
+                                    if (env.ENV == 'prod' || env.ENV == 'global') {
                                         platform = "--custom-platform=linux/amd64"
                                         buildArgs2 = "--build-arg PLATFORM=linux/amd64"
                                     } else {
