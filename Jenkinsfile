@@ -138,7 +138,7 @@ pipeline {
                                 ]
 
                                 // Target 컬러용 Deployment 템플릿 처리
-                                def deploymentContent = readFile "ci-cd-templates/k8s/deployment-template.yaml"
+                                def deploymentContent = readFile "k8s/deployment-template.yaml"
 
                                 // kms 애플리케이션의 경우 환경 변수 파일에서 추가 변수 로드
                                 if (env.APP_NAME == 'kms') {
@@ -172,14 +172,14 @@ pipeline {
                                 writeFile file: "k8s/deployment-${targetColor}.yaml", text: deploymentContent
 
                                 // Service 템플릿 처리
-                                def serviceContent = readFile "ci-cd-templates/k8s/service-template.yaml"
+                                def serviceContent = readFile "k8s/service-template.yaml"
                                 variables.each { key, value ->
                                     serviceContent = serviceContent.replaceAll(/\$\{${key}\}/, value)
                                 }
                                 writeFile file: "k8s/service-processed.yaml", text: serviceContent
 
                                 // Ingress 템플릿 처리
-                                def ingressContent = readFile "ci-cd-templates/k8s/ingress-template.yaml"
+                                def ingressContent = readFile "k8s/ingress-template.yaml"
                                 variables.each { key, value ->
                                     ingressContent = ingressContent.replaceAll(/\$\{${key}\}/, value)
                                 }
@@ -187,7 +187,7 @@ pipeline {
 
                                 // Secret 템플릿 처리 (kms 애플리케이션인 경우에만)
                                 if (env.APP_NAME == 'kms') {
-                                    def secretContent = readFile "ci-cd-templates/k8s/secret-template.yaml"
+                                    def secretContent = readFile "k8s/secret-template.yaml"
                                     variables.each { key, value ->
                                         secretContent = secretContent.replaceAll(/\$\{${key}\}/, value)
                                     }
@@ -361,7 +361,7 @@ pipeline {
         always {
             echo "Pipeline execution completed"
             // 임시 파일 정리
-            sh "rm -rf ci-cd-templates"
+            sh "rm -rf k8s Dockerfile-* .dockerignore"
         }
         success {
             echo 'The Pipeline succeeded :)'
