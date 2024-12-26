@@ -37,14 +37,23 @@ pipeline {
 
     stages {
         stage('배포 파이프라인 체크아웃, 템플릿 처리') {
-            steps {
-                stash name: 'source', includes: '**'
+            script {
+                // 템플릿 저장소에서 지정된 브랜치로 체크아웃
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${env.TEMPLATE_BRANCH}"]],
+                    userRemoteConfigs: [[
+                        url: "${env.TEMPLATE_REPO}"
+                    ]]
+                ])
 
-                script {
-                    def podTemplateContent = readFile "k8s/jenkins-pod-template.yaml"
-                    podTemplateContent = podTemplateContent.replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
-                    env.POD_TEMPLATE_CONTENT = podTemplateContent
-                }
+                // Pod 템플릿 처리
+                def podTemplateContent = readFile "k8s/jenkins-pod-template.yaml"
+                podTemplateContent = podTemplateContent.replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
+                env.POD_TEMPLATE_CONTENT = podTemplateContent
+
+                // 템플릿 파일들을 stash
+                stash includes: 'k8s/**,Dockerfile-*,.dockerignore', name: 'template-files'
             }
         }
 
@@ -105,14 +114,9 @@ pipeline {
                     steps {
                         container('kubectl') {
                             script {
-                                // 템플릿 저장소 클론
-                                dir('ci-cd-templates') {
-                                    git url: env.TEMPLATE_REPO,
-                                    branch: env.TEMPLATE_BRANCH
-                                }
+                                unstash 'template-files'
 
-                                sh "cp ci-cd-templates/Dockerfile-${env.APP_TYPE} Dockerfile"
-                                sh "cp ci-cd-templates/.dockerignore .dockerignore"
+                                sh "cp Dockerfile-${env.APP_TYPE} Dockerfile"
 
                                 sh "mkdir -p k8s"
 
