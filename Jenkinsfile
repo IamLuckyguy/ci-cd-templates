@@ -131,7 +131,11 @@ pipeline {
                                     'IMAGE_PATH': env.IMAGE_PATH ?: '',
                                     'NEXUS_TAG': env.NEXUS_TAG ?: 'latest',
                                     'NODE_ARCH': env.NODE_ARCH ?: 'amd64',
-                                    'CLUSTER_ISSUER': env.CLUSTER_ISSUER ?: ''
+                                    'CLUSTER_ISSUER': env.CLUSTER_ISSUER ?: '',
+                                    'NEXUS_REGISTRY': env.NEXUS_REGISTRY ?: '',
+                                    'NEXUS_REPOSITORY': env.NEXUS_REPOSITORY ?: '',
+                                    'IMAGE_PATH': env.IMAGE_PATH ?: '',
+                                    'NEXUS_TAG': env.NEXUS_TAG ?: 'latest'
                                 ]
 
                                 // Target 컬러용 Deployment 템플릿 처리
