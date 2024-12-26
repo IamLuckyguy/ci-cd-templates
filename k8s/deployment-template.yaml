@@ -40,10 +40,10 @@ spec:
         color: ${COLOR}
     spec:
       imagePullSecrets:
-        - name: docker-reg-cred
+        - name: nexus-docker-credentials
       containers:
         - name: ${APP_NAME}
-          image: ${DOCKER_IMAGE}:${DOCKER_TAG}
+          image: ${NEXUS_REGISTRY}/${NEXUS_REPOSITORY}/${IMAGE_PATH}:${NEXUS_TAG}
           ports:
             - containerPort: ${CONTAINER_PORT}
           env:

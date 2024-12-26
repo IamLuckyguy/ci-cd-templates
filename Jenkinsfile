@@ -14,18 +14,22 @@ pipeline {
         SERVICE_PORT = "80" // kubernetes service port는 80으로 고정
         DOMAIN = "${params.DOMAIN}" // ingress 생성이 필요할 때 사용됨. 도메인 이름 front.kwt.co.kr, user-api-dev.kwt.co.kr, ...
 
-        PROJECT_NAME = "${params.PROJECT_NAME}" // 프로젝트 이름 kwt
+        PROJECT_NAME = "${params.PROJECT_NAME}" // 프로젝트 이름 kwt, namespace 작명에 사용
         APP_NAME = "${params.APP_NAME}" // 애플리케이션 이름 front, api-gateway, ...
-        DOCKER_CONFIG = credentials('docker-hub-credentials') // docker hub 에 접속할 수 있는 credential
-        BRANCH = "${params.BRANCH}" // 브랜치 배포시 사용, 브랜치 이름.
+
+        // 넥서스, CI/CD 템플릿 관련
+        NEXUS_REPOSITORY = "kwt-docker"  // 저장소 이름
+        NEXUS_REGISTRY = "nexus-docker-5000.nexus.svc.cluster.local:5000"  // 레지스트리 내부 DNS 주소
         IMAGE_TAG = "${params.IMAGE_TAG}" // Jenkins 에서 입력받은 이미지 태그, 없으면 latest/빌드 번호 사용. 이전 이미지 태그(빌드번호) 입력시 롤백 배포에 사용 가능
-        DOCKER_TAG = "${params.IMAGE_TAG ?: env.BUILD_NUMBER}" // docker image tag
-        DOCKER_USERNAME = "wondookong"
+        NEXUS_TAG = "${params.IMAGE_TAG ?: env.BUILD_NUMBER}" // docker image tag
         K8S_NAMESPACE = "${params.ENV == 'global' ? params.PROJECT_NAME : params.PROJECT_NAME + '-' + params.ENV}" // 네임스페이스가 없을 경우 생성하도록
-        DOCKER_IMAGE = "${DOCKER_USERNAME}/${K8S_NAMESPACE}-${params.APP_NAME}" // docker hub image 경로
+        IMAGE_PATH = "${K8S_NAMESPACE}-${params.APP_NAME}" // docker hub image 경로
         TEMPLATE_REPO = "${scm.userRemoteConfigs[0].url}" // CI/CD 템플릿 저장소 URL
         TEMPLATE_BRANCH = "${params.TEMPLATE_BRANCH}" // CI/CD 템플릿 저장소 브랜치
+
+        // 어플리케이션 관련
         APP_REPO = "${params.APP_REPO}" // 애플리케이션 저장소 URL
+        BRANCH = "${params.BRANCH}" // 브랜치 배포시 사용, 브랜치 이름.
         APP_CREDENTIALS = "${params.APP_REPO_CREDENTIALS_ID == null ? 'github-access' : params.APP_REPO_CREDENTIALS_ID}" // 애플리케이션 저장소 Token 등록 Credential
         NODE_ARCH = "${(params.ENV == 'prod' || params.ENV == 'global') ? 'amd64' : 'arm64'}" // prod, global 환경일 때는 amd64, dev 환경일 때는 arm64
         CLUSTER_ISSUER = "${(params.ENV == 'prod' || params.ENV == 'global') ? 'letsencrypt-prod' : 'letsencrypt-staging'}" // prod, global 환경일 때는 letsencrypt-prod, 그 외 환경일 때는 letsencrypt-staging
@@ -124,8 +128,8 @@ pipeline {
                                     'CONTAINER_PORT': env.CONTAINER_PORT ?: '',
                                     'SERVICE_PORT': env.SERVICE_PORT ?: '80',
                                     'DOMAIN': env.DOMAIN ?: '',
-                                    'DOCKER_IMAGE': env.DOCKER_IMAGE ?: '',
-                                    'DOCKER_TAG': env.DOCKER_TAG ?: 'latest',
+                                    'IMAGE_PATH': env.IMAGE_PATH ?: '',
+                                    'NEXUS_TAG': env.NEXUS_TAG ?: 'latest',
                                     'NODE_ARCH': env.NODE_ARCH ?: 'amd64',
                                     'CLUSTER_ISSUER': env.CLUSTER_ISSUER ?: ''
                                 ]
@@ -226,8 +230,8 @@ pipeline {
                                         /kaniko/executor \\
                                         --context `pwd` \\
                                         ${platform} \\
-                                        --destination ${env.DOCKER_IMAGE}:${env.DOCKER_TAG} \\
-                                        --destination ${env.DOCKER_IMAGE}:latest \\
+                                        --destination ${env.NEXUS_REGISTRY}/${env.NEXUS_REPOSITORY}/${env.IMAGE_PATH}:${env.NEXUS_TAG} \\
+                                        --destination ${env.NEXUS_REGISTRY}/${env.NEXUS_REPOSITORY}/${env.IMAGE_PATH}:latest \\
                                         --dockerfile `pwd`/Dockerfile \\
                                         ${buildArgs1} \\
                                         ${buildArgs2}
@@ -258,22 +262,22 @@ pipeline {
 
                                 // 2. Docker registry secret 존재 여부 확인
                                 def secretExists = sh(
-                                    script: "kubectl get secret docker-reg-cred -n ${env.K8S_NAMESPACE}",
+                                    script: "kubectl get secret nexus-docker-credentials -n ${env.K8S_NAMESPACE}",
                                     returnStatus: true
                                 ) == 0
 
                                 // Secret이 없을 경우에만 생성
                                 if (!secretExists) {
-                                    echo "Creating docker-reg-cred secret in namespace ${env.K8S_NAMESPACE}"
-                                    withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials',
-                                                                    usernameVariable: 'DOCKER_USER',
-                                                                    passwordVariable: 'DOCKER_PASSWORD')]) {
+                                    echo "Creating nexus-docker-credentials secret in namespace ${env.K8S_NAMESPACE}"
+                                    withCredentials([usernamePassword(credentialsId: 'nexus-docker-credentials',
+                                                                    usernameVariable: 'NEXUS_USER',
+                                                                    passwordVariable: 'NEXUS_PASSWORD')]) {
                                         sh """
-                                            kubectl create secret docker-registry docker-reg-cred \
+                                            kubectl create secret docker-registry nexus-docker-credentials \
                                             --namespace=${env.K8S_NAMESPACE} \
-                                            --docker-server=docker.io \
-                                            --docker-username="\${DOCKER_USER}" \
-                                            --docker-password="\${DOCKER_PASSWORD}"
+                                            --docker-server=${env.NEXUS_REGISTRY} \
+                                            --docker-username="\${NEXUS_USER}" \
+                                            --docker-password="\${NEXUS_PASSWORD}"
                                         """
                                     }
                                 }

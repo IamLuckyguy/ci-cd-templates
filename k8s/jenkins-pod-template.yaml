@@ -57,7 +57,7 @@ spec:
   volumes:
     - name: docker-config
       secret:
-        secretName: docker-credentials
+        secretName: nexus-docker-credentials
         items:
           - key: .dockerconfigjson
             path: config.json
