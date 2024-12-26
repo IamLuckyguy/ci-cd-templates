@@ -38,6 +38,9 @@ pipeline {
     stages {
         stage('배포 파이프라인 체크아웃, 템플릿 처리') {
             script {
+                // 디버깅을 위해 env.TEMPLATE_BRANCH 를 출력
+                echo "TEMPLATE_BRANCH: ${env.TEMPLATE_BRANCH}"
+
                 // 템플릿 저장소에서 지정된 브랜치로 체크아웃
                 checkout([
                     $class: 'GitSCM',
