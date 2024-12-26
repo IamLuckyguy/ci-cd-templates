@@ -19,7 +19,7 @@ pipeline {
 
         // 넥서스, CI/CD 템플릿 관련
         NEXUS_REPOSITORY = "kwt-docker"  // 저장소 이름
-        NEXUS_REGISTRY = "nexus-docker-5000.nexus.svc.cluster.local:5000"  // 레지스트리 내부 DNS 주소
+        NEXUS_REGISTRY = "registry.kwt.co.kr"  // 레지스트리 내부 DNS 주소
         IMAGE_TAG = "${params.IMAGE_TAG}" // Jenkins 에서 입력받은 이미지 태그, 없으면 latest/빌드 번호 사용. 이전 이미지 태그(빌드번호) 입력시 롤백 배포에 사용 가능
         NEXUS_TAG = "${params.IMAGE_TAG ?: env.BUILD_NUMBER}" // docker image tag
         K8S_NAMESPACE = "${params.ENV == 'global' ? params.PROJECT_NAME : params.PROJECT_NAME + '-' + params.ENV}" // 네임스페이스가 없을 경우 생성하도록

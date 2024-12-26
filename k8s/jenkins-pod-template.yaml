@@ -6,6 +6,10 @@ spec:
     fsGroup: 1000
   nodeSelector:
     kubernetes.io/arch: ${NODE_ARCH}
+  hostAliases:
+    - ip: "192.168.100.100"
+      hostnames:
+        - "registry.kwt.co.kr"
   containers:
     - name: jnlp
       image: jenkins/inbound-agent:3261.v9c670a_4748a_9-1
