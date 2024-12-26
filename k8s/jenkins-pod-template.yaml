@@ -7,9 +7,9 @@ spec:
   nodeSelector:
     kubernetes.io/arch: ${NODE_ARCH}
   hostAliases:
-    - ip: "192.168.100.100"
+    - ip: ${NEXUS_INTERNAL_IP}
       hostnames:
-        - "registry.kwt.co.kr"
+        - ${NEXUS_REGISTRY}
   containers:
     - name: jnlp
       image: jenkins/inbound-agent:3261.v9c670a_4748a_9-1

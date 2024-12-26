@@ -18,14 +18,13 @@ pipeline {
         APP_NAME = "${params.APP_NAME}" // 애플리케이션 이름 front, api-gateway, ...
 
         // 넥서스, CI/CD 템플릿 관련
-        NEXUS_REPOSITORY = "kwt-docker"  // 저장소 이름
-        NEXUS_REGISTRY = "registry.kwt.co.kr"  // 레지스트리 내부 DNS 주소
+        NEXUS_REGISTRY = "${params.NEXUS_REGISTRY}"  // 레지스트리 내부 DNS 주소
+        NEXUS_REPOSITORY = "${params.NEXUS_REPOSITORY}"  // 저장소 이름
+        NEXUS_INTERNAL_IP = "${params.NEXUS_INTERNAL_IP}" // 넥서스 도커 레지스트리 내부 IP 주소
         IMAGE_TAG = "${params.IMAGE_TAG}" // Jenkins 에서 입력받은 이미지 태그, 없으면 latest/빌드 번호 사용. 이전 이미지 태그(빌드번호) 입력시 롤백 배포에 사용 가능
         NEXUS_TAG = "${params.IMAGE_TAG ?: env.BUILD_NUMBER}" // docker image tag
         K8S_NAMESPACE = "${params.ENV == 'global' ? params.PROJECT_NAME : params.PROJECT_NAME + '-' + params.ENV}" // 네임스페이스가 없을 경우 생성하도록
         IMAGE_PATH = "${K8S_NAMESPACE}-${params.APP_NAME}" // docker hub image 경로
-        TEMPLATE_REPO = "${scm.userRemoteConfigs[0].url}" // CI/CD 템플릿 저장소 URL
-        TEMPLATE_BRANCH = "${params.TEMPLATE_BRANCH}" // CI/CD 템플릿 저장소 브랜치
 
         // 어플리케이션 관련
         APP_REPO = "${params.APP_REPO}" // 애플리케이션 저장소 URL
@@ -43,7 +42,16 @@ pipeline {
 
                     // Pod 템플릿 처리
                     def podTemplateContent = readFile "k8s/jenkins-pod-template.yaml"
-                    podTemplateContent = podTemplateContent.replaceAll('\\$\\{NODE_ARCH\\}', env.NODE_ARCH)
+                    def variables = [
+                        'NODE_ARCH': env.NODE_ARCH ?: '',
+                        'NEXUS_INTERNAL_IP': env.NEXUS_INTERNAL_IP ?: '',
+                        'NEXUS_REGISTRY': env.NEXUS_REGISTRY ?: ''
+                    ]
+
+                    variables.each { key, value ->
+                        podTemplateContent = podTemplateContent.replaceAll(/\$\{${key}\}/, value)
+                    }
+
                     env.POD_TEMPLATE_CONTENT = podTemplateContent
 
                     // 템플릿 파일들을 stash
@@ -134,7 +142,8 @@ pipeline {
                                     'NEXUS_REGISTRY': env.NEXUS_REGISTRY ?: '',
                                     'NEXUS_REPOSITORY': env.NEXUS_REPOSITORY ?: '',
                                     'IMAGE_PATH': env.IMAGE_PATH ?: '',
-                                    'NEXUS_TAG': env.NEXUS_TAG ?: 'latest'
+                                    'NEXUS_TAG': env.NEXUS_TAG ?: 'latest',
+                                    'NEXUS_INTERNAL_IP': env.NEXUS_INTERNAL_IP ?: '',
                                 ]
 
                                 // Target 컬러용 Deployment 템플릿 처리
