@@ -28,3 +28,6 @@ logs
 # Test
 coverage
 .nyc_output
+
+# Next.js
+.next/cache

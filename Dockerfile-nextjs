@@ -21,13 +21,13 @@ ARG NODE_ENV=dev
 ENV NODE_ENV=${NODE_ENV}
 ENV PATH /app/node_modules/.bin:$PATH
 
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.mjs ./
+
+# 캐시 정리
+RUN npm cache clean --force && \
+    rm -rf /root/.npm
 
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
