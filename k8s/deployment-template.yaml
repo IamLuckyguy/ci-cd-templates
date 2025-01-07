@@ -49,6 +49,9 @@ spec:
           env:
             - name: TZ
               value: "Asia/Seoul"
+          envFrom:
+            - secretRef:
+                name: ${APP_NAME}-secrets
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

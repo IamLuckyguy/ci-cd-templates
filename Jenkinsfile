@@ -1,6 +1,18 @@
 def activeColor
 def targetColor
 
+def parseSecretsJson(jsonString) {
+    if (jsonString == null || jsonString.isEmpty()) {
+        return [:]
+    }
+    def secrets = readJSON text: jsonString
+    def result = []
+    secrets.each { key, value ->
+        result.add("${key}: ${value}")
+    }
+    return result.join('\n  ')
+}
+
 pipeline {
     agent any
 
@@ -32,6 +44,7 @@ pipeline {
         APP_CREDENTIALS = "${params.APP_REPO_CREDENTIALS_ID == null ? 'github-access' : params.APP_REPO_CREDENTIALS_ID}" // 애플리케이션 저장소 Token 등록 Credential
         NODE_ARCH = "${(params.ENV == 'prod' || params.ENV == 'global') ? 'amd64' : 'arm64'}" // prod, global 환경일 때는 amd64, dev 환경일 때는 arm64
         CLUSTER_ISSUER = "${(params.ENV == 'prod' || params.ENV == 'global') ? 'letsencrypt-prod' : 'letsencrypt-staging'}" // prod, global 환경일 때는 letsencrypt-prod, 그 외 환경일 때는 letsencrypt-staging
+        SECRETS_JSON = "${params.SECRETS_JSON}"
     }
 
     stages {
@@ -144,35 +157,11 @@ pipeline {
                                     'IMAGE_PATH': env.IMAGE_PATH ?: '',
                                     'NEXUS_TAG': env.NEXUS_TAG ?: 'latest',
                                     'NEXUS_INTERNAL_IP': env.NEXUS_INTERNAL_IP ?: '',
+                                    'SECRETS_DATA': parseSecretsJson(env.SECRETS_JSON)
                                 ]
 
                                 // Target 컬러용 Deployment 템플릿 처리
                                 def deploymentContent = readFile "k8s/deployment-template.yaml"
-
-                                // kms 애플리케이션의 경우 환경 변수 파일에서 추가 변수 로드
-                                if (env.APP_NAME == 'kms') {
-                                    def secretsContent = """
-          envFrom:
-          - secretRef:
-              name: ${env.APP_NAME}-secrets
-                                    """
-
-                                    // containers 항목 찾아서 env 섹션 다음에 secrets 설정 추가
-                                    def pattern = ~/(?m)(.*- name: TZ\n.*value: "Asia\/Seoul")/
-                                    deploymentContent = deploymentContent.replaceAll(pattern, "\$1\n${secretsContent}")
-
-                                    def envFile = ".env.${env.ENV}"
-                                    def envContent = readFile(envFile)
-
-                                    envContent.split('\n').each { line ->
-                                        if (line && !line.startsWith('#')) {
-                                            def parts = line.split('=', 2)
-                                            if (parts.size() == 2) {
-                                                variables[parts[0].trim()] = parts[1].trim()
-                                            }
-                                        }
-                                    }
-                                }
 
                                 variables.each { key, value ->
                                     deploymentContent = deploymentContent.replaceAll(/\$\{${key}\}/, value)
@@ -194,14 +183,12 @@ pipeline {
                                 }
                                 writeFile file: "k8s/ingress-processed.yaml", text: ingressContent
 
-                                // Secret 템플릿 처리 (kms 애플리케이션인 경우에만)
-                                if (env.APP_NAME == 'kms') {
-                                    def secretContent = readFile "k8s/secret-template.yaml"
-                                    variables.each { key, value ->
-                                        secretContent = secretContent.replaceAll(/\$\{${key}\}/, value)
-                                    }
-                                    writeFile file: "k8s/secret-processed.yaml", text: secretContent
+                                // Secret 템플릿 처리
+                                def secretContent = readFile "k8s/secret-template.yaml"
+                                variables.each { key, value ->
+                                    secretContent = secretContent.replaceAll(/\$\{${key}\}/, value)
                                 }
+                                writeFile file: "k8s/secret-processed.yaml", text: secretContent
 
                                 stash includes: 'k8s/**,Dockerfile', name: 'build-files'
                             }
@@ -272,13 +259,12 @@ pipeline {
                                     sh "kubectl create namespace ${env.K8S_NAMESPACE}"
                                 }
 
-                                // 2. Docker registry secret 존재 여부 확인
+                                // 2. Docker registry secret 존재 여부 확인, NEXUS 접근을 위한 Secret이 없을 경우에만 생성
                                 def secretExists = sh(
                                     script: "kubectl get secret nexus-docker-credentials -n ${env.K8S_NAMESPACE}",
                                     returnStatus: true
                                 ) == 0
 
-                                // Secret이 없을 경우에만 생성
                                 if (!secretExists) {
                                     echo "Creating nexus-docker-credentials secret in namespace ${env.K8S_NAMESPACE}"
                                     withCredentials([usernamePassword(credentialsId: 'nexus-docker-credentials',
@@ -294,24 +280,22 @@ pipeline {
                                     }
                                 }
 
-                                // 2-1. kms 일 경우 secret 생성 또는 업데이트
-                                if (env.APP_NAME == 'kms') {
-                                    sh """
-                                        kubectl apply -f k8s/secret-processed.yaml -n ${env.K8S_NAMESPACE}
-                                    """
-                                }
+                                // 3. 어플리케이션에서 사용될 secret 생성 또는 업데이트
+                                sh """
+                                    kubectl apply -f k8s/secret-processed.yaml -n ${env.K8S_NAMESPACE}
+                                """
 
-                                // 3. Target 컬러의 새로운 Deployment 생성/업데이트
+                                // 4. Target 컬러의 새로운 Deployment 생성/업데이트
                                 sh """
                                     kubectl apply -f k8s/deployment-${targetColor}.yaml -n ${env.K8S_NAMESPACE}
                                 """
 
-                                // 4. Target 배포가 완전히 준비될 때까지 대기
+                                // 5. Target 배포가 완전히 준비될 때까지 대기
                                 sh """
                                     kubectl rollout status deployment/${env.APP_NAME}-${targetColor} -n ${env.K8S_NAMESPACE} --timeout=180s
                                 """
 
-                                // 최초 배포시에만 Service와 Ingress 생성
+                                // 6. 최초 배포시에만 Service와 Ingress 생성
                                 if (activeColor == "none") {
                                     echo "최초 배포 - Service와 Ingress 생성"
                                     sh """
