@@ -3,14 +3,12 @@ def targetColor
 
 def parseSecretsJson(jsonString) {
     if (jsonString == null || jsonString.isEmpty()) {
-        return [:]
+        return ""
     }
-    def secrets = readJSON text: jsonString
-    def result = []
-    secrets.each { key, value ->
-        result.add("${key}: ${value}")
-    }
-    return result.join('\n  ')
+    def parser = new groovy.json.JsonSlurper()
+    return parser.parseText(jsonString).collect { key, value ->
+        "${key}: ${value}"
+    }.join('\n  ')
 }
 
 pipeline {
