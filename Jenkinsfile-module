@@ -11,7 +11,7 @@ pipeline {
                   - name: gradle
                     image: gradle:jdk17
                     command:
-                    - /busybox/cat
+                    - cat
                     tty: true
             '''
         }
