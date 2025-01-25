@@ -28,10 +28,27 @@ pipeline {
     }
 
     environment {
+        BRANCH = "${params.BRANCH}" // 브랜치명
         ENV = "${params.ENV}" // dev, prod
+        APP_REPO = "${params.APP_REPO}" // 애플리케이션 저장소 URL
     }
 
     stages {
+        stage('어플리케이션 체크아웃') {
+            steps {
+                script {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "${env.BRANCH}"]],
+                        userRemoteConfigs: [[
+                            url: "${env.APP_REPO}",
+                            credentialsId: "github-access"
+                        ]]
+                    ])
+                }
+            }
+        }
+
         stage('Publish') {
             steps {
                 container('gradle') {
