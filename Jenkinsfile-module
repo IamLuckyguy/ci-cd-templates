@@ -34,7 +34,7 @@ pipeline {
     stages {
         stage('Publish') {
             steps {
-                container('maven-build') {
+                container('gradle') {
                     withCredentials([usernamePassword(credentialsId: 'nexus-credentials',
                                             usernameVariable: 'NEXUS_USER',
                                             passwordVariable: 'NEXUS_PASSWORD')]) {
