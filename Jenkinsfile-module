@@ -1,0 +1,40 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+                apiVersion: v1
+                kind: Pod
+                spec:
+                  containers:
+                  - name: maven-build
+                    image: gradle:jdk17
+                    command:
+                    - /busybox/cat
+                    tty: true
+            '''
+        }
+    }
+
+    environment {
+        ENV = "${params.ENV}" // dev, prod
+    }
+
+    stages {
+        stage('Publish') {
+            steps {
+                container('maven-build') {
+                    withCredentials([usernamePassword(credentialsId: 'nexus-credentials',
+                                            usernameVariable: 'NEXUS_USER',
+                                            passwordVariable: 'NEXUS_PASSWORD')]) {
+                        sh """
+                            ./gradlew publish \
+                            -Penv=${params.ENV} \
+                            -PnexusUsername="\${NEXUS_USER}" \
+                            -PnexusPassword="\${NEXUS_PASSWORD}"
+                        """
+                    }
+                }
+            }
+        }
+    }
+}
