@@ -6,7 +6,9 @@ pipeline {
                 kind: Pod
                 spec:
                   containers:
-                  - name: maven-build
+                  - name: jnlp
+                    image: jenkins/inbound-agent:latest
+                  - name: gradle
                     image: gradle:jdk17
                     command:
                     - /busybox/cat
