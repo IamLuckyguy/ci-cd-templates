@@ -4,7 +4,7 @@ ARG PLATFORM=linux/amd64
 FROM --platform=${PLATFORM} gradle:8.10.2-jdk17 AS builder
 WORKDIR /app
 COPY . .
-RUN gradle build --no-daemon
+RUN gradle build --no-daemon -Penv=${SPRING_PROFILES_ACTIVE}
 
 # Production stage
 FROM --platform=${PLATFORM} eclipse-temurin:17-jdk-jammy
