@@ -209,6 +209,7 @@ pipeline {
                                     def platform = "--custom-platform=linux/arm64"
                                     def buildArgs1 = ""
                                     def buildArgs2 = ""
+                                    def serviceArg = "--build-arg SERVICE=${env.APP_NAME}"
 
                                     if (env.APP_TYPE == 'nextjs' || env.APP_TYPE == 'express') {
                                         buildArgs1 = "--build-arg NODE_ENV=${env.ENV}"
@@ -231,7 +232,8 @@ pipeline {
                                         --destination ${env.NEXUS_REGISTRY}/${env.NEXUS_REPOSITORY}/${env.IMAGE_PATH}:latest \\
                                         --dockerfile `pwd`/Dockerfile \\
                                         ${buildArgs1} \\
-                                        ${buildArgs2}
+                                        ${buildArgs2} \\
+                                        ${serviceArg}
                                     """
                                 }
                             }
